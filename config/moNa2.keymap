@@ -25,7 +25,7 @@
             compatible = "zmk,behavior-macro";
             #binding-cells = <0>;
             bindings = <&kp LANG2 &kp AT>;
-            label = "ATMARK";
+            label = "@";
         };
     };
 
@@ -67,7 +67,7 @@
         layer_1 {
             bindings = <
 &kp EXCL        &kp DQT       &kp HASH   &kp DOLLAR  &kp PERCENT                             &kp AMPERSAND     &kp SINGLE_QUOTE   &kp MINUS       &kp CARET        &kp BACKSLASH
-&kp ESCAPE      &kp SQT       &kp TILDE  &kp PIPE    &kp NUMBER_0             &trans         &kp LEFT_BRACKET  &kp RIGHT_BRACKET  &kp LEFT_BRACE  &kp RIGHT_BRACE  &kp AT
+&kp ESCAPE      &kp SQT       &kp TILDE  &kp PIPE    &kp NUMBER_0             &trans         &kp LEFT_BRACKET  &kp RIGHT_BRACKET  &kp LEFT_BRACE  &kp RIGHT_BRACE  &macro_atmark
 &kp LEFT_SHIFT  &kp ASTERISK  &kp MINUS  &kp PLUS    &kp EQUAL     &kp F19    &kp F19        &kp LESS_THAN     &kp GREATER_THAN   &kp COMMA       &kp PERIOD       &kp QUESTION
 &trans          &trans        &trans     &trans      &trans        &kp F17    &kp BACKSPACE  &kp ENTER                                                             &kp UNDERSCORE
             >;
