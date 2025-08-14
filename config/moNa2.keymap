@@ -55,7 +55,7 @@
         m_minus: minus {
             compatible = "zmk,behavior-macro";
             #binding-cells = <0>;
-            bindings = <&kp LANG2 &kp MINUS>;
+            bindings = <&kp MINUS>;
         };
 
         m_caret: caret {
@@ -181,7 +181,7 @@
         m_jp_minus: m_jp_minus {
             compatible = "zmk,behavior-macro";
             #binding-cells = <0>;
-            bindings = <&kp LANG1 &kp MINUS &kp ENTER>;
+            bindings = <&kp LANG1 &kp MINUS>;
             label = "M_JP_MINUS";
         };
     };
@@ -274,8 +274,8 @@
         default_layer {
             bindings = <
 &kp Q           &kp W         &kp E             &kp R  &kp T                                   &kp Y           &kp U  &kp I     &kp O  &kp P
-&kp A           &kp S         &kp D             &kp F  &kp G                   &kp F24         &kp H           &kp J  &kp K     &kp L  &minus_equal_morph
-&kp Z           &kp X         &kp C             &kp V  &kp B      &kp LCTRL    &kp RCTRL       &kp N           &kp M  &mkp MB1  &mo 2  &colon_asterisk_morph
+&kp A           &kp S         &kp D             &kp F  &kp G                   &kp RCTRL       &kp H           &kp J  &kp K     &kp L  &minus_equal_morph
+&kp Z           &kp X         &kp C             &kp V  &kp B      &kp LCTRL    &kp ESCAPE      &kp N           &kp M  &mkp MB1  &mo 2  &colon_asterisk_morph
 &kp LEFT_SHIFT  &kp LEFT_ALT  &kp LEFT_COMMAND  &mo 1  &kp SPACE  &kp F13      &kp LANGUAGE_2  &kp LANGUAGE_1                          &slash_question_morph
             >;
 
@@ -286,10 +286,10 @@
 
         layer_1 {
             bindings = <
-&kp TAB    &m_dquote        &m_hash       &m_dollar  &m_percent                           &m_ampersand  &m_squote  &minus_equal_morph  &caret_tilde_morph  &atmark_grave_morph
-&kp RSHFT  &kp EXCLAMATION  &kp QUESTION  &trans     &kp RCTRL             &m_jp_minus    &m_angle      &m_paren   &m_brace            &m_bracket          &semicolon_plus_morph
-&trans     &trans           &trans        &trans     &trans      &trans    &trans         &m_jpquote    &trans     &kp COMMA           &kp PERIOD          &backslash_pipe_morph
-&trans     &trans           &trans        &trans     &trans      &trans    &kp BACKSPACE  &kp ENTER                                                        &m_underscore
+&kp TAB    &m_dquote        &m_hash       &m_dollar  &m_percent                                   &m_ampersand           &m_squote   &minus_equal_morph  &caret_tilde_morph  &kp BACKSPACE
+&kp RSHFT  &m_grave         &m_asterisk   &m_equal   &m_minus              &m_atmark              &m_angle               &m_paren    &m_brace            &m_bracket          &kp ENTER
+&trans     &kp EXCLAMATION  &kp QUESTION  &m_plus    &trans      &trans    &trans                 &m_jpquote             &m_jpquote  &kp COMMA           &kp PERIOD          &backslash_pipe_morph
+&trans     &trans           &trans        &trans     &trans      &trans    &semicolon_plus_morph  &colon_asterisk_morph                                                      &m_underscore
             >;
 
             sensor-bindings = <&scroll_up_down>;
