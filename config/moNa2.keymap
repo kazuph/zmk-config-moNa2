@@ -151,7 +151,7 @@
         m_jpquote: jpquote {
             compatible = "zmk,behavior-macro";
             #binding-cells = <0>;
-            bindings = <&kp LANG1 &kp LS(LBKT) &kp LS(RBKT) &kp ENTER &kp LEFT>;
+            bindings = <&kp LANG1 &kp LBKT &kp RBKT &kp ENTER &kp LEFT>;
         };
 
         m_colon: colon {
