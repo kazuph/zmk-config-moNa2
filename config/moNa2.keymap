@@ -297,8 +297,8 @@
 
         layer_1 {
             bindings = <
-&kp EXCL        &m_dquote &m_hash   &m_ampersand  &m_squote                             &m_angle  &m_paren  &m_brace    &m_bracket     &atmark_grave_morph
-&kp TAB      &trans  &trans  &trans    &kp ESCAPE             &trans            &trans    &trans   &trans    &trans     &trans
+&kp EXCL        &m_dquote &m_hash   &m_ampersand  &m_squote                             &minus_equal_morph  &caret_tilde_morph  &backslash_pipe_morph    &trans     &trans
+&kp TAB      &trans  &trans  &trans    &kp ESCAPE             &trans            &m_angle    &m_paren   &m_brace    &m_bracket     &atmark_grave_morph
 &trans  &trans &trans &trans   &trans  &trans    &trans        &trans            &trans         &kp COMMA       &kp PERIOD       &trans
 &trans          &trans        &trans        &trans         &trans          &trans    &kp BACKSPACE  &kp ENTER                                                        &m_underscore
             >;
