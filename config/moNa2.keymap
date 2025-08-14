@@ -222,28 +222,28 @@
             tap-ms = <20>;
         };
 
-        &minus_equal_morph: &minus_equal_morph {
+        minus_equal_morph: minus_equal_morph {
             compatible = "zmk,behavior-mod-morph";
             #binding-cells = <0>;
             bindings = <&m_minus>, <&m_equal>;
             mods = <(MOD_LSFT|MOD_RSFT)>;
         };
 
-        &caret_tilde_morph: &caret_tilde_morph {
+        caret_tilde_morph: caret_tilde_morph {
             compatible = "zmk,behavior-mod-morph";
             #binding-cells = <0>;
             bindings = <&m_caret>, <&m_tilde>;
             mods = <(MOD_LSFT|MOD_RSFT)>;
         };
 
-        &backslash_pipe_morph: &backslash_pipe_morph {
+        backslash_pipe_morph: backslash_pipe_morph {
             compatible = "zmk,behavior-mod-morph";
             #binding-cells = <0>;
             bindings = <&m_backslash>, <&m_pipe>;
             mods = <(MOD_LSFT|MOD_RSFT)>;
         };
 
-        &atmark_grave_morph: &atmark_grave_morph {
+        atmark_grave_morph: atmark_grave_morph {
             compatible = "zmk,behavior-mod-morph";
             #binding-cells = <0>;
             bindings = <&m_atmark>, <&m_grave>;
@@ -257,21 +257,21 @@
             mods = <(MOD_LSFT|MOD_RSFT)>;
         };
 
-        &semicolon_plus_morph: &semicolon_plus_morph {
+        semicolon_plus_morph: semicolon_plus_morph {
             compatible = "zmk,behavior-mod-morph";
             #binding-cells = <0>;
             bindings = <&m_semicolon>, <&m_plus>;
             mods = <(MOD_LSFT|MOD_RSFT)>;
         };
 
-        &colon_asterisk_morph: &colon_asterisk_morph {
+        colon_asterisk_morph: colon_asterisk_morph {
             compatible = "zmk,behavior-mod-morph";
             #binding-cells = <0>;
             bindings = <&m_colon>, <&m_asterisk>;
             mods = <(MOD_LSFT|MOD_RSFT)>;
         };
 
-        &slash_question_morph: &slash_question_morph {
+        slash_question_morph: slash_question_morph {
             compatible = "zmk,behavior-mod-morph";
             #binding-cells = <0>;
             bindings = <&m_slash>, <&m_question>;
