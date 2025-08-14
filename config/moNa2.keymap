@@ -27,6 +27,153 @@
             bindings = <&kp LANG2 &kp AT>;
             label = "@";
         };
+
+        macro_hash: hash {
+            compatible = "zmk,behavior-macro";
+            #binding-cells = <0>;
+            bindings = <&kp LANG2 &kp HASH>;
+            label = "#";
+        };
+
+        macro_dollar: dollar {
+            compatible = "zmk,behavior-macro";
+            #binding-cells = <0>;
+            bindings = <&kp LANG2 &kp DOLLAR>;
+            label = "$";
+        };
+
+        macro_percent: percent {
+            compatible = "zmk,behavior-macro";
+            #binding-cells = <0>;
+            bindings = <&kp LANG2 &kp PERCENT>;
+            label = "%";
+        };
+
+        macro_ampersand: ampersand {
+            compatible = "zmk,behavior-macro";
+            #binding-cells = <0>;
+            bindings = <&kp LANG2 &kp AMPERSAND>;
+            label = "&";
+        };
+
+        macro_minus: minus {
+            compatible = "zmk,behavior-macro";
+            #binding-cells = <0>;
+            bindings = <&kp LANG2 &kp MINUS>;
+            label = "-";
+        };
+
+        macro_caret: caret {
+            compatible = "zmk,behavior-macro";
+            #binding-cells = <0>;
+            bindings = <&kp LANG2 &kp CARET>;
+            label = "^";
+        };
+
+        macro_backslash: backslash {
+            compatible = "zmk,behavior-macro";
+            #binding-cells = <0>;
+            bindings = <&kp LANG2 &kp BACKSLASH>;
+            label = "\\";
+        };
+
+        macro_tilde: tilde {
+            compatible = "zmk,behavior-macro";
+            #binding-cells = <0>;
+            bindings = <&kp LANG2 &kp TILDE>;
+            label = "~";
+        };
+
+        macro_pipe: pipe {
+            compatible = "zmk,behavior-macro";
+            #binding-cells = <0>;
+            bindings = <&kp LANG2 &kp PIPE>;
+            label = "|";
+        };
+
+        macro_asterisk: asterisk {
+            compatible = "zmk,behavior-macro";
+            #binding-cells = <0>;
+            bindings = <&kp LANG2 &kp ASTERISK>;
+            label = "*";
+        };
+
+        macro_plus: plus {
+            compatible = "zmk,behavior-macro";
+            #binding-cells = <0>;
+            bindings = <&kp LANG2 &kp PLUS>;
+            label = "+";
+        };
+
+        macro_equal: equal {
+            compatible = "zmk,behavior-macro";
+            #binding-cells = <0>;
+            bindings = <&kp LANG2 &kp EQUAL>;
+            label = "=";
+        };
+
+        macro_underscore: underscore {
+            compatible = "zmk,behavior-macro";
+            #binding-cells = <0>;
+            bindings = <&kp LANG2 &kp UNDERSCORE>;
+            label = "_";
+        };
+
+        macro_paren: paren {
+            compatible = "zmk,behavior-macro";
+            #binding-cells = <0>;
+            bindings = <&kp LANG2 &kp LPAR &kp RPAR &kp LEFT>;
+            label = "()";
+        };
+
+        macro_bracket: bracket {
+            compatible = "zmk,behavior-macro";
+            #binding-cells = <0>;
+            bindings = <&kp LANG2 &kp LBKT &kp RBKT &kp LEFT>;
+            label = "[]";
+        };
+
+        macro_brace: brace {
+            compatible = "zmk,behavior-macro";
+            #binding-cells = <0>;
+            bindings = <&kp LANG2 &kp LBRC &kp RBRC &kp LEFT>;
+            label = "{}";
+        };
+
+        macro_angle: angle {
+            compatible = "zmk,behavior-macro";
+            #binding-cells = <0>;
+            bindings = <&kp LANG2 &kp LT &kp GT &kp LEFT>;
+            label = "<>";
+        };
+
+        macro_dquote: dquote {
+            compatible = "zmk,behavior-macro";
+            #binding-cells = <0>;
+            bindings = <&kp LANG2 &kp DQT &kp DQT &kp LEFT>;
+            label = "\"\"";
+        };
+
+        macro_squote: squote {
+            compatible = "zmk,behavior-macro";
+            #binding-cells = <0>;
+            bindings = <&kp LANG2 &kp SQT &kp SQT &kp LEFT>;
+            label = "''";
+        };
+
+        macro_grave: grave {
+            compatible = "zmk,behavior-macro";
+            #binding-cells = <0>;
+            bindings = <&kp LANG2 &kp GRAVE &kp GRAVE &kp LEFT>;
+            label = "``";
+        };
+
+        macro_jpquote: jpquote {
+            compatible = "zmk,behavior-macro";
+            #binding-cells = <0>;
+            bindings = <&kp LANG1 &kp LS(LBKT) &kp LS(RBKT) &kp ENTER &kp LEFT>;
+            label = "「」";
+        };
     };
 
     behaviors {
@@ -66,10 +213,10 @@
 
         layer_1 {
             bindings = <
-&kp EXCL        &kp DQT       &kp HASH   &kp DOLLAR  &kp PERCENT                             &kp AMPERSAND     &kp SINGLE_QUOTE   &kp MINUS       &kp CARET        &kp BACKSLASH
-&kp ESCAPE      &kp SQT       &kp TILDE  &kp PIPE    &kp NUMBER_0             &trans         &kp LEFT_BRACKET  &kp RIGHT_BRACKET  &kp LEFT_BRACE  &kp RIGHT_BRACE  &macro_atmark
-&kp LEFT_SHIFT  &kp ASTERISK  &kp MINUS  &kp PLUS    &kp EQUAL     &kp F19    &kp F19        &kp LESS_THAN     &kp GREATER_THAN   &kp COMMA       &kp PERIOD       &kp QUESTION
-&trans          &trans        &trans     &trans      &trans        &kp F17    &kp BACKSPACE  &kp ENTER                                                             &kp UNDERSCORE
+&kp EXCL        &macro_dquote &macro_hash   &macro_dollar  &macro_percent                             &macro_ampersand  &macro_squote  &macro_minus    &macro_caret     &macro_backslash
+&kp ESCAPE      &macro_paren  &macro_tilde  &macro_pipe    &kp NUMBER_0             &trans            &macro_bracket    &macro_brace   &macro_angle    &macro_grave     &macro_atmark
+&kp LEFT_SHIFT  &macro_asterisk &macro_plus &macro_equal   &macro_jpquote  &kp F19    &kp F19        &trans            &trans         &kp COMMA       &kp PERIOD       &kp QUESTION
+&trans          &trans        &trans        &trans         &trans          &kp F17    &kp BACKSPACE  &kp ENTER                                                        &macro_underscore
             >;
 
             sensor-bindings = <&scroll_up_down>;
