@@ -285,9 +285,9 @@
         default_layer {
             bindings = <
 &kp Q           &kp W         &kp E             &kp R  &kp T                                   &kp Y           &kp U  &kp I     &kp O  &kp P
-&kp A           &kp S         &kp D             &kp F  &kp G                   &trans          &kp H           &kp J  &kp K     &kp L  &&colon_asterisk_morph
-&kp Z           &kp X         &kp C             &kp V  &kp B      &kp LCTRL    &trans          &kp N           &kp M  &mkp MB1  &mo 2  &&semicolon_plus_morph
-&kp LEFT_SHIFT  &kp LEFT_ALT  &kp LEFT_COMMAND  &mo 1  &kp SPACE  &kp F13      &kp LANGUAGE_2  &kp LANGUAGE_1                          &&slash_question_morph
+&kp A           &kp S         &kp D             &kp F  &kp G                   &trans          &kp H           &kp J  &kp K     &kp L  &colon_asterisk_morph
+&kp Z           &kp X         &kp C             &kp V  &kp B      &kp LCTRL    &trans          &kp N           &kp M  &mkp MB1  &mo 2  &semicolon_plus_morph
+&kp LEFT_SHIFT  &kp LEFT_ALT  &kp LEFT_COMMAND  &mo 1  &kp SPACE  &kp F13      &kp LANGUAGE_2  &kp LANGUAGE_1                          &slash_question_morph
             >;
 
             sensor-bindings =
@@ -297,8 +297,8 @@
 
         layer_1 {
             bindings = <
-&kp EXCL        &m_dquote &m_hash   &trans  &trans                             &m_ampersand  &m_squote  &&minus_equal_morph    &&caret_tilde_morph     &&backslash_pipe_morph
-&kp TAB      &trans  &trans  &trans    &kp ESCAPE             &trans            &m_angle    &m_paren   &m_brace    &m_bracket     &&atmark_grave_morph
+&kp EXCL        &m_dquote &m_hash   &trans  &trans                             &m_ampersand  &m_squote  &minus_equal_morph    &caret_tilde_morph     &backslash_pipe_morph
+&kp TAB      &trans  &trans  &trans    &kp ESCAPE             &trans            &m_angle    &m_paren   &m_brace    &m_bracket     &atmark_grave_morph
 &trans  &trans &trans &trans   &trans  &trans    &trans        &trans            &trans         &kp COMMA       &kp PERIOD       &trans
 &trans          &trans        &trans        &trans         &trans          &trans    &kp BACKSPACE  &kp ENTER                                                        &m_underscore
             >;
