@@ -182,7 +182,6 @@
             compatible = "zmk,behavior-macro";
             #binding-cells = <0>;
             bindings = <&kp LANG1 &kp MINUS>;
-            label = "M_JP_MINUS";
         };
 
         m_command_shift_ctrl: m_command_shift_ctrl {
