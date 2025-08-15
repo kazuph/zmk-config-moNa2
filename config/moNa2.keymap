@@ -184,6 +184,34 @@
             bindings = <&kp LANG1 &kp MINUS>;
             label = "M_JP_MINUS";
         };
+
+        m_command_shift_ctrl: m_command_shift_ctrl {
+            compatible = "zmk,behavior-macro";
+            #binding-cells = <0>;
+            bindings = <&kp LEFT_COMMAND &kp LEFT_SHIFT &kp RCTRL>;
+            label = "M_COMMAND_SHIFT_CTRL";
+        };
+
+        m_command_shift_ctrl_4: m_command_shift_ctrl_4 {
+            compatible = "zmk,behavior-macro";
+            #binding-cells = <0>;
+            bindings = <&kp LEFT_COMMAND &kp LEFT_SHIFT &kp RCTRL &kp NUMBER_4>;
+            label = "M_COMMAND_SHIFT_CTRL_4";
+        };
+
+        m_command_plus: m_command_plus {
+            compatible = "zmk,behavior-macro";
+            #binding-cells = <0>;
+            bindings = <&kp LANGUAGE_2 &kp LEFT_COMMAND &kp PLUS>;
+            label = "M_COMMAND_PLUS";
+        };
+
+        m_command_minus: m_command_minus {
+            compatible = "zmk,behavior-macro";
+            #binding-cells = <0>;
+            bindings = <&kp LANGUAGE_2 &kp LEFT_COMMAND &kp MINUS>;
+            label = "M_COMMAND_MINUS";
+        };
     };
 
     behaviors {
@@ -273,10 +301,10 @@
 
         default_layer {
             bindings = <
-&kp Q           &kp W         &kp E             &kp R  &kp T                                   &kp Y           &kp U  &kp I     &kp O  &kp P
-&kp A           &kp S         &kp D             &kp F  &kp G                   &kp RCTRL       &kp H           &kp J  &kp K     &kp L  &minus_equal_morph
-&kp Z           &kp X         &kp C             &kp V  &kp B      &kp LCTRL    &kp ESCAPE      &kp N           &kp M  &mkp MB1  &mo 2  &colon_asterisk_morph
-&kp LEFT_SHIFT  &kp LEFT_ALT  &kp LEFT_COMMAND  &mo 1  &kp SPACE  &kp F13      &kp LANGUAGE_2  &kp LANGUAGE_1                          &slash_question_morph
+&kp Q           &kp W         &kp E             &kp R  &kp T                                               &kp Y           &kp U  &kp I     &kp O  &kp P
+&kp A           &kp S         &kp D             &kp F  &kp G                               &kp RCTRL       &kp H           &kp J  &kp K     &kp L  &minus_equal_morph
+&kp Z           &kp X         &kp C             &kp V  &kp B      &m_command_shift_ctrl    &kp ESCAPE      &kp N           &kp M  &mkp MB1  &mo 2  &colon_asterisk_morph
+&kp LEFT_SHIFT  &kp LEFT_ALT  &kp LEFT_COMMAND  &mo 1  &kp SPACE  &kp F13                  &kp LANGUAGE_2  &kp LANGUAGE_1                          &slash_question_morph
             >;
 
             sensor-bindings =
@@ -286,10 +314,10 @@
 
         layer_1 {
             bindings = <
-&kp TAB    &m_dquote        &m_hash       &m_dollar  &m_percent                                   &m_ampersand           &m_squote   &minus_equal_morph  &caret_tilde_morph  &kp BACKSPACE
-&kp RSHFT  &m_grave         &m_asterisk   &m_equal   &m_minus              &m_atmark              &m_angle               &m_paren    &m_brace            &m_bracket          &kp ENTER
-&trans     &kp EXCLAMATION  &kp QUESTION  &m_plus    &trans      &trans    &trans                 &m_jpquote             &m_jpquote  &kp COMMA           &kp PERIOD          &backslash_pipe_morph
-&trans     &trans           &trans        &trans     &trans      &trans    &semicolon_plus_morph  &colon_asterisk_morph                                                      &m_underscore
+&kp TAB    &m_dquote        &m_hash       &m_dollar  &m_percent                                                    &m_ampersand           &m_squote   &minus_equal_morph  &caret_tilde_morph  &kp BACKSPACE
+&kp RSHFT  &m_grave         &m_asterisk   &m_equal   &m_minus                               &m_atmark              &m_angle               &m_paren    &m_brace            &m_bracket          &kp ENTER
+&trans     &kp EXCLAMATION  &kp QUESTION  &m_plus    &trans      &m_command_shift_ctrl_4    &trans                 &m_jpquote             &m_jpquote  &kp COMMA           &kp PERIOD          &backslash_pipe_morph
+&trans     &trans           &trans        &trans     &trans      &trans                     &semicolon_plus_morph  &colon_asterisk_morph                                                      &m_underscore
             >;
 
             sensor-bindings = <&scroll_up_down>;
@@ -297,10 +325,10 @@
 
         layer_2 {
             bindings = <
-&kp NUMBER_1  &kp NUMBER_2  &kp NUMBER_3  &kp NUMBER_4  &kp NUMBER_5                     &kp NUMBER_6  &kp NUMBER_7  &kp NUMBER_8  &kp NUMBER_9  &kp NUMBER_0
-&kp NUMBER_6  &kp NUMBER_7  &kp NUMBER_8  &kp NUMBER_9  &kp NUMBER_0            &trans   &kp LEFT      &kp DOWN      &kp UP        &kp RIGHT     &kp RIGHT
-&kp F1        &kp F2        &kp F3        &kp F7        &kp F8        &kp F9    &kp F10  &kp F11       &kp F12       &trans        &trans        &trans
-&trans        &trans        &trans        &mo 3         &trans        &trans    &trans   &kp F24                                                 &trans
+&kp NUMBER_1  &kp NUMBER_2  &kp NUMBER_3  &kp NUMBER_4  &kp NUMBER_5                     &m_command_plus  &m_command_minus  &trans  &trans     &trans
+&kp NUMBER_6  &kp NUMBER_7  &kp NUMBER_8  &kp NUMBER_9  &kp NUMBER_0            &trans   &kp LEFT         &kp DOWN          &kp UP  &kp RIGHT  &kp RIGHT
+&kp F1        &kp F2        &kp F3        &kp F7        &kp F8        &kp F9    &kp F10  &kp F11          &kp F12           &trans  &trans     &trans
+&trans        &trans        &trans        &mo 3         &trans        &trans    &trans   &kp F24                                               &trans
             >;
 
             sensor-bindings = <&scroll_up_down>;
