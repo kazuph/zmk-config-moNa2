@@ -50,23 +50,23 @@ spinner() {
 # 設定
 MOUNT_POINT="/Volumes/XIAO-SENSE"
 DOWNLOADS_DIR="$HOME/Downloads"
-DRY_RUN=false
+CHECK_BUILD=true
 
 # 使用方法を表示
 usage() {
     echo "使用方法: $0 [オプション]"
     echo "オプション:"
-    echo "  --dry-run    実際のコピーは行わず、動作確認のみ"
-    echo "  --help       ヘルプを表示"
+    echo "  --skip-build   GitHub Actionsビルド確認をスキップ"
+    echo "  --help         ヘルプを表示"
     exit 1
 }
 
 # 引数解析
 while [[ $# -gt 0 ]]; do
     case $1 in
-        --dry-run)
-            DRY_RUN=true
-            echo "${YELLOW}🧪 ドライランモード${NC}"
+        --skip-build)
+            CHECK_BUILD=false
+            echo "${YELLOW}⏭️ ビルド確認スキップモード${NC}"
             shift
             ;;
         --help)
@@ -79,34 +79,175 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# 最新のファームウェアフォルダを検出
+# 最新のファームウェアフォルダを検出（作成日時順）
 find_latest_firmware() {
-    local latest_num=0
-    local latest_dir=""
+    # firmwareで始まるディレクトリを作成日時順で取得
+    local latest_dir=$(ls -1dt "$DOWNLOADS_DIR"/firmware* 2>/dev/null | grep -E 'firmware( \([0-9]+\))?$' | head -1)
     
-    # firmwareフォルダをチェック
-    if [[ -d "$DOWNLOADS_DIR/firmware" ]]; then
-        latest_dir="$DOWNLOADS_DIR/firmware"
-    fi
-    
-    # firmware (N) 形式のフォルダをチェック
-    for dir in "$DOWNLOADS_DIR"/firmware\ \(*\); do
-        if [[ -d "$dir" ]]; then
-            # 括弧内の数字を抽出
-            if [[ "$dir" =~ firmware\ \(([0-9]+)\)$ ]]; then
-                local num=${BASH_REMATCH[1]}
-                if (( num > latest_num )); then
-                    latest_num=$num
-                    latest_dir="$dir"
-                fi
-            fi
-        fi
-    done
-    
-    if [[ -n "$latest_dir" ]]; then
+    if [[ -n "$latest_dir" && -d "$latest_dir" ]]; then
         echo "$latest_dir"
     else
         log_error "ファームウェアフォルダが見つかりません"
+        exit 1
+    fi
+}
+
+# GitHub Actionsビルド状況確認
+check_github_build() {
+    if [[ "$CHECK_BUILD" == "false" ]]; then
+        log_step "⏭️ ビルド確認をスキップします"
+        return 0
+    fi
+    
+    log_step "🔍 GitHub Actionsビルド状況を確認中..."
+    
+    # 必要なコマンドの存在確認
+    if ! command -v gh &> /dev/null; then
+        log_error "GitHub CLI (gh) がインストールされていません"
+        echo "インストール: brew install gh"
+        exit 1
+    fi
+    
+    if ! command -v jq &> /dev/null; then
+        log_error "jq がインストールされていません"
+        echo "インストール: brew install jq"
+        exit 1
+    fi
+    
+    # 最新runの情報を取得
+    local run_info=$(gh run list -R kazuph/zmk-config-moNa2 --limit 1 --json status,conclusion,databaseId,workflowName 2>/dev/null)
+    if [[ $? -ne 0 ]]; then
+        log_error "GitHub Actionsの情報取得に失敗しました"
+        exit 1
+    fi
+    
+    local build_status=$(echo "$run_info" | jq -r '.[0].status')
+    local conclusion=$(echo "$run_info" | jq -r '.[0].conclusion')
+    local run_id=$(echo "$run_info" | jq -r '.[0].databaseId')
+    
+    log_step "📊 最新ビルド状況: $build_status"
+    
+    case "$build_status" in
+        "completed")
+            if [[ "$conclusion" == "success" ]]; then
+                log_success "ビルド成功! Artifactをダウンロードします"
+                download_latest_artifact "$run_id"
+            else
+                log_error "ビルドが失敗しています: $conclusion"
+                say_jp "ビルドが失敗しています"
+                exit 1
+            fi
+            ;;
+        "in_progress"|"queued")
+            log_step "⏳ ビルドが実行中です。完了を待機..."
+            say_jp "ビルド実行中。完了を待機します"
+            wait_for_build_completion "$run_id"
+            ;;
+        *)
+            log_error "不明なビルド状況: $build_status"
+            exit 1
+            ;;
+    esac
+}
+
+# ビルド完了待機
+wait_for_build_completion() {
+    local run_id="$1"
+    local check_interval=10
+    
+    # 10秒間隔でチェック
+    local check_count=0
+    while true; do
+        ((check_count++))
+        log_step "🔍 ビルド状況チェック #${check_count}"
+        
+        local run_info=$(gh run list -R kazuph/zmk-config-moNa2 --limit 1 --json status,conclusion,databaseId 2>/dev/null)
+        local build_status=$(echo "$run_info" | jq -r '.[0].status')
+        local conclusion=$(echo "$run_info" | jq -r '.[0].conclusion')
+        local current_run_id=$(echo "$run_info" | jq -r '.[0].databaseId')
+        
+        # run_idが変わった場合は新しいビルドが開始されている
+        if [[ "$current_run_id" != "$run_id" ]]; then
+            log_step "🔄 新しいビルドが開始されました"
+            run_id="$current_run_id"
+        fi
+        
+        case "$build_status" in
+            "completed")
+                if [[ "$conclusion" == "success" ]]; then
+                    log_success "ビルド完了! Artifactをダウンロードします"
+                    say_jp "ビルド完了"
+                    download_latest_artifact "$run_id"
+                    return 0
+                else
+                    log_error "ビルドが失敗しました: $conclusion"
+                    say_jp "ビルドが失敗しました"
+                    exit 1
+                fi
+                ;;
+            "in_progress"|"queued")
+                log_step "⏳ まだ実行中... ${check_interval}秒後に再チェック"
+                sleep $check_interval
+                ;;
+            *)
+                log_error "不明なビルド状況: $build_status"
+                exit 1
+                ;;
+        esac
+    done
+}
+
+# 最新Artifactダウンロード
+download_latest_artifact() {
+    local run_id="$1"
+    local artifact_name="firmware"
+    local download_dir="$DOWNLOADS_DIR"
+    local temp_dir="./temp_artifact_download"
+    
+    log_step "📦 Artifact '$artifact_name' をダウンロード中..."
+    say_jp "アーティファクトをダウンロード中"
+    
+    # 既存のfirmwareフォルダをバックアップ
+    if [[ -d "$download_dir/firmware" ]]; then
+        local backup_name="firmware_backup_$(date +%Y%m%d_%H%M%S)"
+        log_step "🗂️ 既存フォルダを $backup_name にバックアップ"
+        mv "$download_dir/firmware" "$download_dir/$backup_name"
+    fi
+    
+    # 一時ディレクトリを作成してダウンロード
+    mkdir -p "$temp_dir"
+    
+    # Artifactダウンロード（現在のgitリポジトリで実行）
+    if gh run download "$run_id" -R kazuph/zmk-config-moNa2 -D "$temp_dir" -n "$artifact_name" 2>/dev/null; then
+        log_success "Artifactダウンロード完了"
+        say_jp "ダウンロード完了"
+        
+        # ダウンロードディレクトリに移動
+        if [[ -d "$temp_dir/$artifact_name" ]]; then
+            mv "$temp_dir/$artifact_name" "$download_dir/firmware"
+        elif [[ -f "$temp_dir/$artifact_name.zip" ]]; then
+            log_step "📂 zipファイルを展開中..."
+            unzip -q "$temp_dir/$artifact_name.zip" -d "$download_dir/"
+            log_success "zip展開完了"
+        else
+            # 直接ファイルがある場合（単一ファイルArtifact）
+            mkdir -p "$download_dir/firmware"
+            mv "$temp_dir"/* "$download_dir/firmware/"
+        fi
+        
+        # 一時ディレクトリをクリーンアップ
+        rm -rf "$temp_dir"
+        
+        # firmwareフォルダの確認
+        if [[ -d "$download_dir/firmware" ]]; then
+            log_success "最新ファームウェアの準備完了"
+        else
+            log_error "firmwareフォルダが見つかりません"
+            exit 1
+        fi
+    else
+        log_error "Artifactダウンロードに失敗しました"
+        rm -rf "$temp_dir"
         exit 1
     fi
 }
@@ -175,11 +316,6 @@ copy_firmware() {
         exit 1
     fi
     
-    if [[ "$DRY_RUN" == "true" ]]; then
-        echo "${YELLOW}[DRY RUN] $description${NC}"
-        return 0
-    fi
-    
     # コピー処理
     printf "${CYAN}📁 $description を書き込み中...${NC}"
     cp "$src_file" "$MOUNT_POINT/" 2>/dev/null || true
@@ -209,6 +345,9 @@ main() {
     echo -e "${BOLD}${CYAN}🚀 XIAO-SENSE 自動ファームウェア転送${NC}"
     echo ""
     say_jp "ファームウェアを転送します"
+    
+    # GitHub Actionsビルド確認・Artifactダウンロード
+    check_github_build
     
     # 最新ファームウェア検出
     firmware_dir=$(find_latest_firmware)
