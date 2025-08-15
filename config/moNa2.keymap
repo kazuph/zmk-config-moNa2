@@ -212,11 +212,11 @@
             #binding-cells = <0>;
             bindings =
                 <&macro_press>,
-                <&kp LANGUAGE_2 &kp LEFT_COMMAND>,
+                <&kp LEFT_COMMAND>,
                 <&macro_tap>,
-                <&kp PLUS>,
+                <&kp EQUAL>,
                 <&macro_release>,
-                <&kp LANGUAGE_2 &kp LEFT_COMMAND>;
+                <&kp LEFT_COMMAND>;
         };
 
         m_command_minus: m_command_minus {
@@ -224,11 +224,11 @@
             #binding-cells = <0>;
             bindings =
                 <&macro_press>,
-                <&kp LANGUAGE_2 &kp LEFT_COMMAND>,
+                <&kp LEFT_COMMAND>,
                 <&macro_tap>,
                 <&kp MINUS>,
                 <&macro_release>,
-                <&kp LANGUAGE_2 &kp LEFT_COMMAND>;
+                <&kp LEFT_COMMAND>;
         };
 
         m_f24_hold: m_f24_hold {
