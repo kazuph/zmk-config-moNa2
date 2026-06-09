@@ -84,7 +84,7 @@ keymap だけを変える通常運用では、外部 KeymapEditor / GitHub OAuth
 1. 右側 central に ZMK Studio 対応 firmware を一度だけ書き込む
 2. `tools/serve-zmk-studio.sh` で自分の ZMK Studio を起動する
 3. Chrome / Edge から USB で moNa2_R に接続して keymap を変更する
-4. firmware が必要な復旧時だけ `tools/serve-uf2-flasher.sh` または手動コピーで `.uf2` を流し込む
+4. firmware が必要な復旧時だけ `tools/serve-uf2-flasher.sh` でプリセット済み `.uf2` を流し込む、または手動コピーする
 
 ローカルで起動したブラウザから USB を使う場合は `localhost` で動作します。別端末や Tailscale URL から使う場合は、Tailscale Serve などで HTTPS として公開してください。
 

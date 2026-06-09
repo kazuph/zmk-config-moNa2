@@ -152,13 +152,15 @@ moNa2 の通常 keymap 変更フローから、他人の Web サイト、GitHub 
 ### 10. 最小 flasher UI を作る
 
 実装:
-- `.uf2` ファイル選択。
+- `~/Downloads/moNa2-firmware/<現在の commit>/` の `.uf2` をプリセット表示。
+- プリセットがない場合や別ファイルを使う場合の `.uf2` ファイル選択。
 - 書き込み先ディレクトリ選択。
 - 選択ファイル名が `moNa2_R` / `moNa2_L` / `settings_reset` のどれかを表示。
 - 書き込み前に「右に焼くファイルか、左に焼くファイルか」を明示する。
 - コピー中にドライブが消えることを正常系として扱う。
 
 検証:
+- self-host flasher に現在 commit の右側、左側、settings reset がプリセット表示されること。
 - dummy directory への書き込みでファイルコピーが成功すること。
 - 実機 bootloader の `XIAO-SENSE` へコピーして自動アンマウントすること。
 - 誤った左右ファイルを選んだときに警告が出ること。

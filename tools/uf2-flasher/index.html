@@ -164,6 +164,36 @@
         margin-top: 12px;
       }
 
+      .preset-row {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+        margin-top: 12px;
+      }
+
+      .preset-button {
+        min-height: 64px;
+        text-align: left;
+        padding: 10px 12px;
+      }
+
+      .preset-button strong,
+      .preset-button span {
+        display: block;
+      }
+
+      .preset-button span {
+        margin-top: 4px;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 520;
+      }
+
+      .preset-button.active {
+        border-color: var(--accent);
+        box-shadow: inset 0 0 0 1px var(--accent);
+      }
+
       .meta {
         display: grid;
         gap: 8px;
@@ -260,6 +290,10 @@
         .grid {
           grid-template-columns: 1fr;
         }
+
+        .preset-row {
+          grid-template-columns: 1fr;
+        }
       }
     </style>
   </head>
@@ -282,11 +316,14 @@
               <div class="num">1</div>
               <div>
                 <h2>UF2 を選択</h2>
-                <p>右側、左側、settings reset のどれを書き込むかをファイル名から判定します。</p>
+                <p>ローカルに保存済みのビルド成果物を優先表示します。任意の UF2 を選ぶこともできます。</p>
+                <div id="firmwareSource" class="status">ローカル firmware を確認しています。</div>
+                <div id="presetButtons" class="preset-row"></div>
                 <div class="row">
                   <button id="pickFile">UF2 を選ぶ</button>
                 </div>
                 <div class="meta">
+                  <div><span>Source</span><strong id="fileSource">未選択</strong></div>
                   <div><span>File</span><strong id="fileName">未選択</strong></div>
                   <div><span>Target</span><strong id="targetKind">未判定</strong></div>
                   <div><span>Size</span><strong id="fileSize">-</strong></div>
@@ -352,7 +389,9 @@
     <script>
       const state = {
         file: null,
+        preset: null,
         directory: null,
+        firmware: null,
       };
 
       const el = {
@@ -360,6 +399,9 @@
         pickDir: document.getElementById("pickDir"),
         writeButton: document.getElementById("writeButton"),
         resetButton: document.getElementById("resetButton"),
+        firmwareSource: document.getElementById("firmwareSource"),
+        presetButtons: document.getElementById("presetButtons"),
+        fileSource: document.getElementById("fileSource"),
         fileName: document.getElementById("fileName"),
         targetKind: document.getElementById("targetKind"),
         fileSize: document.getElementById("fileSize"),
@@ -396,11 +438,27 @@
         return `${mib.toFixed(2)} MiB`;
       }
 
-      function updateUi() {
-        const file = state.file;
-        const dir = state.directory;
-        const kind = file ? classifyFile(file.name) : "unknown";
+      function selectedUf2() {
+        return state.file || state.preset;
+      }
 
+      function selectedKind() {
+        const uf2 = selectedUf2();
+        return uf2 ? (uf2.kind || classifyFile(uf2.name)) : "unknown";
+      }
+
+      function sourceLabel() {
+        if (state.preset) return `preset ${state.preset.shortCommit}`;
+        if (state.file) return "manual file";
+        return "未選択";
+      }
+
+      function updateUi() {
+        const file = selectedUf2();
+        const dir = state.directory;
+        const kind = selectedKind();
+
+        el.fileSource.textContent = sourceLabel();
         el.fileName.textContent = file ? file.name : "未選択";
         el.targetKind.textContent = file ? targetLabel(kind) : "未判定";
         el.fileSize.textContent = file ? formatSize(file.size) : "-";
@@ -440,6 +498,64 @@
         el.writeButton.disabled = false;
       }
 
+      function renderFirmwareSource() {
+        const firmware = state.firmware;
+        el.presetButtons.textContent = "";
+
+        if (!firmware) {
+          el.firmwareSource.className = "status";
+          el.firmwareSource.textContent = "ローカル firmware を確認しています。";
+          return;
+        }
+
+        if (!firmware.available) {
+          el.firmwareSource.className = "status warn";
+          el.firmwareSource.textContent = `プリセットはありません: ${firmware.root}`;
+          return;
+        }
+
+        const commit = firmware.manifest?.short_commit || firmware.shortCommit;
+        const runId = firmware.manifest?.run_id;
+        el.firmwareSource.className = "status good";
+        el.firmwareSource.textContent = runId
+          ? `プリセット: ${commit} / Actions run ${runId}`
+          : `プリセット: ${commit}`;
+
+        const order = ["right", "left", "reset"];
+        for (const kind of order) {
+          const file = firmware.files.find((item) => item.kind === kind);
+          if (!file) continue;
+
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = "preset-button";
+          if (state.preset?.name === file.name) button.classList.add("active");
+          button.innerHTML = `<strong>${targetLabel(kind)}</strong><span>${file.name}</span>`;
+          button.addEventListener("click", () => {
+            state.file = null;
+            state.preset = { ...file, shortCommit: commit };
+            appendLog(`selected preset: ${file.name}`);
+            renderFirmwareSource();
+            updateUi();
+          });
+          el.presetButtons.appendChild(button);
+        }
+      }
+
+      async function loadFirmwarePresets() {
+        try {
+          const response = await fetch("/api/firmware", { cache: "no-store" });
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          state.firmware = await response.json();
+          renderFirmwareSource();
+          updateUi();
+        } catch (error) {
+          state.firmware = { available: false, root: "unknown", files: [] };
+          renderFirmwareSource();
+          appendLog(`preset load failed: ${error.message}`);
+        }
+      }
+
       async function pickFile() {
         const [handle] = await window.showOpenFilePicker({
           multiple: false,
@@ -451,7 +567,9 @@
           ],
         });
         state.file = await handle.getFile();
+        state.preset = null;
         appendLog(`selected file: ${state.file.name}`);
+        renderFirmwareSource();
         updateUi();
       }
 
@@ -462,9 +580,10 @@
       }
 
       async function writeUf2() {
-        if (!state.file || !state.directory) return;
+        const uf2 = selectedUf2();
+        if (!uf2 || !state.directory) return;
 
-        const kind = classifyFile(state.file.name);
+        const kind = selectedKind();
         if (kind === "unknown") {
           appendLog("blocked: unknown UF2 filename");
           updateUi();
@@ -472,12 +591,18 @@
         }
 
         el.writeButton.disabled = true;
-        appendLog(`write start: ${state.file.name}`);
+        appendLog(`write start: ${uf2.name}`);
 
         try {
-          const target = await state.directory.getFileHandle(state.file.name, { create: true });
+          const blob = state.preset
+            ? await fetch(state.preset.url, { cache: "no-store" }).then((response) => {
+                if (!response.ok) throw new Error(`preset fetch failed: HTTP ${response.status}`);
+                return response.blob();
+              })
+            : state.file;
+          const target = await state.directory.getFileHandle(uf2.name, { create: true });
           const writable = await target.createWritable();
-          await writable.write(state.file);
+          await writable.write(blob);
           await writable.close();
           el.safetyStatus.className = "status good";
           el.safetyStatus.textContent = "書き込み完了。デバイスが再起動していれば成功です。";
@@ -493,8 +618,10 @@
 
       function reset() {
         state.file = null;
+        state.preset = null;
         state.directory = null;
         el.log.textContent = "ready";
+        renderFirmwareSource();
         updateUi();
       }
 
@@ -503,7 +630,9 @@
       el.writeButton.addEventListener("click", () => writeUf2());
       el.resetButton.addEventListener("click", reset);
 
+      renderFirmwareSource();
       updateUi();
+      loadFirmwarePresets();
     </script>
   </body>
 </html>
