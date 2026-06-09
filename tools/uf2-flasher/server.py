@@ -13,6 +13,8 @@ from urllib.parse import unquote
 APP_DIR = Path(os.environ["MONA2_APP_DIR"]).resolve()
 REPO_ROOT = Path(os.environ["MONA2_REPO_ROOT"]).resolve()
 FIRMWARE_ROOT = Path(os.environ["MONA2_FIRMWARE_ROOT"]).expanduser().resolve()
+STUDIO_DIST_ENV = os.environ.get("MONA2_STUDIO_DIST")
+STUDIO_DIST = Path(STUDIO_DIST_ENV).resolve() if STUDIO_DIST_ENV else None
 
 
 def repo_short_sha():
@@ -119,11 +121,33 @@ class Handler(SimpleHTTPRequestHandler):
             self.send_firmware(include_body=True)
             return
 
+        if self.path in ("/zmk.svg", "/vite.svg"):
+            self.send_studio_asset(self.path.removeprefix("/"), include_body=True)
+            return
+
+        if self.path == "/studio":
+            self.send_response(308)
+            self.send_header("Location", "/studio/")
+            self.end_headers()
+            return
+
+        if self.path.startswith("/studio/"):
+            self.send_studio(include_body=True)
+            return
+
         super().do_GET()
 
     def do_HEAD(self):
         if self.path.startswith("/firmware/"):
             self.send_firmware(include_body=False)
+            return
+
+        if self.path in ("/zmk.svg", "/vite.svg"):
+            self.send_studio_asset(self.path.removeprefix("/"), include_body=False)
+            return
+
+        if self.path == "/studio" or self.path.startswith("/studio/"):
+            self.send_studio(include_body=False)
             return
 
         super().do_HEAD()
@@ -164,15 +188,63 @@ class Handler(SimpleHTTPRequestHandler):
         if include_body:
             self.wfile.write(body)
 
+    def send_studio(self, include_body):
+        if STUDIO_DIST is None or not STUDIO_DIST.is_dir():
+            self.send_error(404, "ZMK Studio build is missing")
+            return
+
+        relative = unquote(self.path.split("?", 1)[0]).removeprefix("/studio/")
+        if relative in ("", "."):
+            relative = "index.html"
+
+        studio_path = (STUDIO_DIST / relative).resolve()
+        if not str(studio_path).startswith(str(STUDIO_DIST) + os.sep):
+            self.send_error(403)
+            return
+
+        if not studio_path.is_file():
+            studio_path = STUDIO_DIST / "index.html"
+
+        ctype = mimetypes.guess_type(str(studio_path))[0] or "application/octet-stream"
+        body = studio_path.read_bytes()
+        self.send_response(200)
+        self.send_header("Content-Type", ctype)
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        if include_body:
+            self.wfile.write(body)
+
+    def send_studio_asset(self, file_name, include_body):
+        if STUDIO_DIST is None or not STUDIO_DIST.is_dir():
+            self.send_error(404)
+            return
+
+        studio_path = (STUDIO_DIST / file_name).resolve()
+        if not str(studio_path).startswith(str(STUDIO_DIST) + os.sep):
+            self.send_error(403)
+            return
+        if not studio_path.is_file():
+            self.send_error(404)
+            return
+
+        ctype = mimetypes.guess_type(str(studio_path))[0] or "application/octet-stream"
+        body = studio_path.read_bytes()
+        self.send_response(200)
+        self.send_header("Content-Type", ctype)
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        if include_body:
+            self.wfile.write(body)
+
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--host", default="127.0.0.1")
-    parser.add_argument("--port", type=int, default=8787)
+    parser.add_argument("--port", type=int, default=14242)
     args = parser.parse_args()
 
     server = ThreadingHTTPServer((args.host, args.port), Handler)
-    print(f"Serving moNa2 UF2 flasher on http://{args.host}:{args.port}")
+    print(f"Serving moNa2 web tools on http://{args.host}:{args.port}")
     server.serve_forever()
 
 

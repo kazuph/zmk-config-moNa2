@@ -3,9 +3,11 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-STUDIO_URL="${STUDIO_URL:-http://127.0.0.1:5173}"
-FLASHER_URL="${FLASHER_URL:-http://127.0.0.1:8787}"
+BASE_URL="${BASE_URL:-http://127.0.0.1:14242}"
+STUDIO_URL="${STUDIO_URL:-$BASE_URL/studio/}"
+FLASHER_URL="${FLASHER_URL:-$BASE_URL}"
 TAILSCALE_HOST="${TAILSCALE_HOST:-macbook-air-3.tail5f04b.ts.net}"
+TAILSCALE_PORT="${TAILSCALE_PORT:-14242}"
 
 ok() {
     echo "OK: $1"
@@ -98,16 +100,10 @@ fi
 
 if [[ -n "$TAILSCALE_BIN" ]]; then
     SERVE_JSON="$("$TAILSCALE_BIN" serve status --json 2>/dev/null || true)"
-    if [[ "$SERVE_JSON" == *"$TAILSCALE_HOST:5173"* ]]; then
-        ok "Tailscale Studio route exists: https://$TAILSCALE_HOST:5173/"
+    if [[ "$SERVE_JSON" == *"$TAILSCALE_HOST:$TAILSCALE_PORT"* ]]; then
+        ok "Tailscale web tools route exists: https://$TAILSCALE_HOST:$TAILSCALE_PORT/"
     else
-        warn "Tailscale Studio route missing: https://$TAILSCALE_HOST:5173/"
-    fi
-
-    if [[ "$SERVE_JSON" == *"$TAILSCALE_HOST:8787"* ]]; then
-        ok "Tailscale flasher route exists: https://$TAILSCALE_HOST:8787/"
-    else
-        warn "Tailscale flasher route missing: https://$TAILSCALE_HOST:8787/"
+        warn "Tailscale web tools route missing: https://$TAILSCALE_HOST:$TAILSCALE_PORT/"
     fi
 else
     warn "tailscale CLI not found"
@@ -129,7 +125,7 @@ fi
 
 echo ""
 echo "Next manual checks:"
-echo "1. Open $STUDIO_URL or https://$TAILSCALE_HOST:5173/"
+echo "1. Open $STUDIO_URL or https://$TAILSCALE_HOST:$TAILSCALE_PORT/studio/"
 echo "2. Connect moNa2_R via WebUSB and press studio_unlock"
 echo "3. Change one harmless key, save, power-cycle, and confirm it persists"
-echo "4. For UF2 flashing, open $FLASHER_URL or https://$TAILSCALE_HOST:8787/ and select the right preset"
+echo "4. For UF2 flashing, open $FLASHER_URL or https://$TAILSCALE_HOST:$TAILSCALE_PORT/ and select the right preset"

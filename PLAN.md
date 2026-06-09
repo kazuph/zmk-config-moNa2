@@ -115,11 +115,12 @@ moNa2 の通常 keymap 変更フローから、他人の Web サイト、GitHub 
 実装:
 - `zmkfirmware/zmk-studio` を確認し、ライセンスと build 方法を確認する。
 - local build できることを確認する。
-- GitHub Pages、Cloudflare Pages、またはローカル静的配信のどれかで自分用 URL を用意する。
+- `tools/serve-mona2-web.sh` で ZMK Studio を `/studio/` に静的配信する。
+- flasher と Studio を同じ `14242` ポートにまとめる。
 - public に置く場合でも OAuth や repo 権限は使わない。
 
 検証:
-- self-host URL を Chrome/Edge で開けること。
+- `http://127.0.0.1:14242/studio/` を Chrome/Edge で開けること。
 - USB connection flow が起動すること。
 - moNa2_R に接続できること。
 
@@ -161,7 +162,7 @@ moNa2 の通常 keymap 変更フローから、他人の Web サイト、GitHub 
 
 検証:
 - self-host flasher に現在 commit の右側、左側、settings reset がプリセット表示されること。
-- `tools/check-mona2-flow.sh` で Studio / flasher / Tailscale / firmware preset / USB 状態をまとめて確認できること。
+- `tools/check-mona2-flow.sh` で単一ポートの Studio / flasher / Tailscale / firmware preset / USB 状態をまとめて確認できること。
 - dummy directory への書き込みでファイルコピーが成功すること。
 - 実機 bootloader の `XIAO-SENSE` へコピーして自動アンマウントすること。
 - 誤った左右ファイルを選んだときに警告が出ること。
@@ -175,7 +176,7 @@ moNa2 の通常 keymap 変更フローから、他人の Web サイト、GitHub 
 - KeymapEditor + GitHub OAuth + Actions build は legacy / fallback 扱いにする。
 - 「keymap だけなら右側だけ」を明記する。
 - 「左側も焼く条件」を明記する。
-- firmware 流し込みは self-host flasher または手動 UF2 コピーに整理する。
+- firmware 流し込みは同じ moNa2 web tools の flasher または手動 UF2 コピーに整理する。
 
 検証:
 - 初見でも次の判断ができること。
