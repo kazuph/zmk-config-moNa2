@@ -36,42 +36,119 @@ mergeNestedJson(
   path.join(repoRoot, "tools/zmk-studio-mona2-hid-overrides.json")
 );
 
+const hidUsagesPath = path.join(studioDir, "src/hid-usages.ts");
+let hidUsagesSource = fs.readFileSync(hidUsagesPath, "utf8");
+
+if (!hidUsagesSource.includes("moNa2HidLabel")) {
+  hidUsagesSource = hidUsagesSource.replace(
+    "const overrides: Record<string, Record<string, HidLabels>> = HidOverrides;\n",
+    `const overrides: Record<string, Record<string, HidLabels>> = HidOverrides;
+
+const moNa2HidLabel = (usagePage: number, label?: string) =>
+  usagePage === 7 ? label?.replace(/^Keyboard\\s+/, "") : label;
+`
+  );
+
+  hidUsagesSource = hidUsagesSource.replace(
+    `export const hid_usage_get_label = (
+  usage_page: number,
+  usage_id: number
+): string | undefined =>
+  overrides[usage_page.toString()]?.[usage_id.toString()]?.short ||
+  UsagePages.find((p) => p.Id === usage_page)?.UsageIds?.find(
+    (u) => u.Id === usage_id
+  )?.Name;`,
+    `export const hid_usage_get_label = (
+  usage_page: number,
+  usage_id: number
+): string | undefined =>
+  moNa2HidLabel(
+    usage_page,
+    overrides[usage_page.toString()]?.[usage_id.toString()]?.short ||
+      UsagePages.find((p) => p.Id === usage_page)?.UsageIds?.find(
+        (u) => u.Id === usage_id
+      )?.Name
+  );`
+  );
+
+  hidUsagesSource = hidUsagesSource.replace(
+    `export const hid_usage_get_labels = (
+  usage_page: number,
+  usage_id: number
+): { short?: string; med?: string; long?: string } =>
+  overrides[usage_page.toString()]?.[usage_id.toString()] || {
+    short: UsagePages.find((p) => p.Id === usage_page)?.UsageIds?.find(
+      (u) => u.Id === usage_id
+    )?.Name,
+  };`,
+    `export const hid_usage_get_labels = (
+  usage_page: number,
+  usage_id: number
+): { short?: string; med?: string; long?: string } => {
+  const labels = overrides[usage_page.toString()]?.[usage_id.toString()] || {
+    short: UsagePages.find((p) => p.Id === usage_page)?.UsageIds?.find(
+      (u) => u.Id === usage_id
+    )?.Name,
+  };
+
+  return {
+    short: moNa2HidLabel(usage_page, labels.short),
+    med: moNa2HidLabel(usage_page, labels.med),
+    long: moNa2HidLabel(usage_page, labels.long),
+  };
+};`
+  );
+}
+
+fs.writeFileSync(hidUsagesPath, hidUsagesSource);
+
 const keyPath = path.join(studioDir, "src/keyboard/Key.tsx");
 let keySource = fs.readFileSync(keyPath, "utf8");
 
-keySource = keySource.replace(
-  "interface BehaviorShortName {\n  short?: string;\n}",
-  "interface BehaviorShortName {\n  short?: string;\n  center?: boolean;\n}"
-);
+if (!keySource.includes("center?: boolean;")) {
+  keySource = keySource.replace(
+    "interface BehaviorShortName {\n  short?: string;\n}",
+    "interface BehaviorShortName {\n  short?: string;\n  center?: boolean;\n}"
+  );
+}
 
-keySource = keySource.replace(
-  "interface KeyProps {\n  selected?: boolean;\n  width: number;\n  height: number;\n  oneU: number;\n  header?: string;\n  onClick?: () => void;\n}",
-  "interface KeyProps {\n  selected?: boolean;\n  width: number;\n  height: number;\n  oneU: number;\n  header?: string;\n  centerLabel?: string;\n  onClick?: () => void;\n}"
-);
+if (!keySource.includes("centerLabel?: string;")) {
+  keySource = keySource.replace(
+    "interface KeyProps {\n  selected?: boolean;\n  width: number;\n  height: number;\n  oneU: number;\n  header?: string;\n  onClick?: () => void;\n}",
+    "interface KeyProps {\n  selected?: boolean;\n  width: number;\n  height: number;\n  oneU: number;\n  header?: string;\n  centerLabel?: string;\n  onClick?: () => void;\n}"
+  );
+}
 
-keySource = keySource.replace(
-  "  header,\n  onClick,\n  children,",
-  "  header,\n  centerLabel,\n  onClick,\n  children,"
-);
+if (!keySource.includes("  centerLabel,\n  onClick,")) {
+  keySource = keySource.replace(
+    "  header,\n  onClick,\n  children,",
+    "  header,\n  centerLabel,\n  onClick,\n  children,"
+  );
+}
 
-keySource = keySource.replace(
-  "  const pixelWidth = width * oneU - 2;\n  const pixelHeight = height * oneU - 2;\n",
-  "  const pixelWidth = width * oneU - 2;\n  const pixelHeight = height * oneU - 2;\n  const centeredHeader = typeof header !== \"undefined\" && shortNames[header]?.center;\n  const headerText = shortenHeader(header);\n"
-);
+if (!keySource.includes("const centeredHeader =")) {
+  keySource = keySource.replace(
+    "  const pixelWidth = width * oneU - 2;\n  const pixelHeight = height * oneU - 2;\n",
+    "  const pixelWidth = width * oneU - 2;\n  const pixelHeight = height * oneU - 2;\n  const centeredHeader = typeof header !== \"undefined\" && shortNames[header]?.center;\n  const headerText = shortenHeader(header);\n"
+  );
+}
 
-keySource = keySource.replace(
-  "      <div className={`absolute text-xs ${selected ? \"text-primary-content\" : \"z1text-base-content\"} opacity-80 top-1 text-nowrap left-1/2 font-light -translate-x-1/2 text-center`}>{shortenHeader(header)}</div>\n      {children}",
-  "      {!centerLabel && !centeredHeader && <div className={`absolute text-xs ${selected ? \"text-primary-content\" : \"z1text-base-content\"} opacity-80 top-1 text-nowrap left-1/2 font-light -translate-x-1/2 text-center`}>{headerText}</div>}\n      {centerLabel ? <span className=\"text-3xl font-medium leading-tight whitespace-pre-line text-center\">{centerLabel}</span> : centeredHeader ? <span className=\"text-4xl font-medium leading-none\">{headerText}</span> : children}"
-);
+if (!keySource.includes("centerLabel ? <span")) {
+  keySource = keySource.replace(
+    "      <div className={`absolute text-xs ${selected ? \"text-primary-content\" : \"z1text-base-content\"} opacity-80 top-1 text-nowrap left-1/2 font-light -translate-x-1/2 text-center`}>{shortenHeader(header)}</div>\n      {children}",
+    "      {!centerLabel && !centeredHeader && <div className={`absolute text-xs ${selected ? \"text-primary-content\" : \"z1text-base-content\"} opacity-80 top-1 text-nowrap left-1/2 font-light -translate-x-1/2 text-center`}>{headerText}</div>}\n      {centerLabel ? <span className=\"text-3xl font-medium leading-tight whitespace-pre-line text-center\">{centerLabel}</span> : centeredHeader ? <span className=\"text-4xl font-medium leading-none\">{headerText}</span> : children}"
+  );
+}
 
 fs.writeFileSync(keyPath, keySource);
 
 const keymapPath = path.join(studioDir, "src/keyboard/Keymap.tsx");
 let keymapSource = fs.readFileSync(keymapPath, "utf8");
 
-keymapSource = keymapSource.replace(
-  "type BehaviorMap = Record<number, GetBehaviorDetailsResponse>;\n",
-  `type BehaviorMap = Record<number, GetBehaviorDetailsResponse>;
+if (!keymapSource.includes("const moNa2CenterLabel =")) {
+  keymapSource = keymapSource.replace(
+    "type BehaviorMap = Record<number, GetBehaviorDetailsResponse>;\n",
+    `type BehaviorMap = Record<number, GetBehaviorDetailsResponse>;
 
 const moNa2CenterLabel = (
   layerIndex: number,
@@ -108,15 +185,17 @@ const moNa2CenterLabel = (
   return undefined;
 };
 `
-);
+  );
+}
 
-keymapSource = keymapSource.replace(
-  `    return {
+if (!keymapSource.includes("const centerLabel = moNa2CenterLabel(")) {
+  keymapSource = keymapSource.replace(
+    `    return {
       id: \`\${keymap.layers[selectedLayerIndex].id}-\${i}\`,
       header:
         behaviors[keymap.layers[selectedLayerIndex].bindings[i].behaviorId]
           ?.displayName || "Unknown",`,
-  `    const binding = keymap.layers[selectedLayerIndex].bindings[i];
+    `    const binding = keymap.layers[selectedLayerIndex].bindings[i];
     const behaviorName =
       behaviors[binding.behaviorId]?.displayName || "Unknown";
     const centerLabel = moNa2CenterLabel(
@@ -130,7 +209,8 @@ keymapSource = keymapSource.replace(
       id: \`\${keymap.layers[selectedLayerIndex].id}-\${i}\`,
       header: centerLabel ? undefined : behaviorName,
       centerLabel,`
-);
+  );
+}
 
 keymapSource = keymapSource.replace(
   "          hid_usage={keymap.layers[selectedLayerIndex].bindings[i].param1}",
@@ -147,13 +227,15 @@ fs.writeFileSync(
   Checkbox,
   CheckboxGroup,
   Label,
+  Radio,
+  RadioGroup,
 } from "react-aria-components";
 import {
   hid_usage_from_page_and_id,
   hid_usage_get_label,
   hid_usage_page_get_ids,
 } from "../hid-usages";
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 export interface HidUsagePage {
   id: number;
@@ -202,6 +284,48 @@ const usageChoices = ({ id, min, max }: HidUsagePage): UsageChoice[] => {
       label: hid_usage_get_label(id, i.Id) || i.Name,
     };
   });
+};
+
+const keyboardGroup = (id: number) => {
+  if (id >= 0x04 && id <= 0x1d) return "Letters";
+  if (id >= 0x1e && id <= 0x27) return "Numbers";
+  if (
+    (id >= 0x2d && id <= 0x38) ||
+    id === 0x64 ||
+    id === 0x87 ||
+    id === 0x89
+  ) {
+    return "Symbols";
+  }
+  if (id >= 0x3a && id <= 0x45) return "Function";
+  if (id >= 0x4a && id <= 0x52) return "Navigation";
+  if (id >= 0xe0 && id <= 0xe7) return "Modifiers";
+  if ([0x28, 0x29, 0x2a, 0x2b, 0x2c, 0x39].includes(id)) return "Control";
+  return "Other";
+};
+
+const consumerGroup = (id: number, label: string) => {
+  if ([0xb0, 0xb1, 0xb3, 0xb4, 0xb5, 0xb6, 0xb7, 0xcd, 0xe2, 0xe9, 0xea].includes(id)) {
+    return "Media";
+  }
+  if (id >= 0x30 && id <= 0x37) return "Power";
+  if (id >= 0x180 && id <= 0x1ff) return "Browser / App";
+  if (label.toLowerCase().includes("keyboard")) return "Keyboard";
+  return "Other";
+};
+
+const usageGroup = (choice: UsageChoice) => {
+  if (choice.pageId === 7) return keyboardGroup(choice.id);
+  if (choice.pageId === 12) return consumerGroup(choice.id, choice.label);
+  return "Other";
+};
+
+const displayChoiceLabel = (choice: UsageChoice) => {
+  if (choice.pageId === 7) {
+    return choice.label.replace(/^Keyboard\\s+/, "");
+  }
+
+  return choice.label;
 };
 
 enum Mods {
@@ -260,11 +384,43 @@ export const HidUsagePicker = ({
       })),
     [usagePages]
   );
+  const selectedPageIdFromValue = useMemo(() => {
+    for (const { page, choices } of choicesByPage) {
+      if (choices.some((choice) => choice.value === currentUsage)) return page.id;
+    }
+
+    return choicesByPage[0]?.page.id;
+  }, [choicesByPage, currentUsage]);
+  const [selectedPageId, setSelectedPageId] = useState<number | undefined>(
+    selectedPageIdFromValue
+  );
+  const activePageId = selectedPageId ?? selectedPageIdFromValue;
+  const activeChoices =
+    choicesByPage.find(({ page }) => page.id === activePageId)?.choices || [];
+  const groupNames = useMemo(
+    () => Array.from(new Set(activeChoices.map(usageGroup))),
+    [activeChoices]
+  );
+  const selectedGroupFromValue = useMemo(() => {
+    const found = activeChoices.find((choice) => choice.value === currentUsage);
+    return found ? usageGroup(found) : groupNames[0];
+  }, [activeChoices, currentUsage, groupNames]);
+  const [selectedGroup, setSelectedGroup] = useState<string | undefined>(
+    selectedGroupFromValue
+  );
+  const activeGroup = selectedGroup ?? selectedGroupFromValue;
+  const visibleChoices = activeChoices.filter(
+    (choice) => usageGroup(choice) === activeGroup
+  );
+
+  useEffect(() => {
+    setSelectedGroup(selectedGroupFromValue);
+  }, [selectedGroupFromValue]);
 
   const selectedLabel = useMemo(() => {
     for (const { choices } of choicesByPage) {
       const found = choices.find((choice) => choice.value === currentUsage);
-      if (found) return found.label;
+      if (found) return displayChoiceLabel(found);
     }
 
     return currentUsage ? \`0x\${currentUsage.toString(16)}\` : "未選択";
@@ -320,28 +476,73 @@ export const HidUsagePicker = ({
         </CheckboxGroup>
       </div>
       <div className="grid gap-3 max-h-[42vh] overflow-auto pr-2">
-        {choicesByPage.map(({ page, choices }) => (
-          <section key={page.id} className="grid gap-2">
-            <h3 className="text-sm font-semibold text-base-content/60">
-              {sectionLabel(page.id)}
-            </h3>
-            <div className="flex flex-wrap gap-1.5">
-              {choices.map((choice) => {
-                const selected = choice.value === currentUsage;
-                return (
-                  <Button
-                    key={choice.value}
-                    type="button"
-                    onPress={() => chooseUsage(choice.value)}
-                    className={\`min-h-9 rounded-md border px-3 py-1.5 text-sm font-medium transition-colors \${selected ? "border-primary bg-primary text-primary-content" : "border-base-300 bg-base-100 hover:bg-base-300"}\`}
-                  >
-                    {choice.label}
+        <RadioGroup
+          aria-label="大カテゴリ"
+          value={activePageId?.toString()}
+          onChange={(pageId) => {
+            const nextPageId = parseInt(pageId);
+            setSelectedPageId(nextPageId);
+            const firstChoice =
+              choicesByPage.find((entry) => entry.page.id === nextPageId)
+                ?.choices[0];
+            setSelectedGroup(firstChoice ? usageGroup(firstChoice) : undefined);
+          }}
+          className="grid gap-2"
+        >
+          <h3 className="text-sm font-semibold text-base-content/60">大カテゴリ</h3>
+          <div className="flex flex-wrap gap-1.5">
+            {choicesByPage.map(({ page }) => {
+              return (
+                <Radio
+                  key={page.id}
+                  value={page.id.toString()}
+                  className="min-h-9 rounded-md border border-base-300 bg-base-100 px-4 py-2 text-sm font-semibold transition-colors hover:bg-base-300 rac-selected:border-primary rac-selected:bg-primary rac-selected:text-primary-content"
+                >
+                  {sectionLabel(page.id)}
+                </Radio>
+              );
+            })}
+          </div>
+        </RadioGroup>
+        <RadioGroup
+          aria-label="中カテゴリ"
+          value={activeGroup}
+          onChange={setSelectedGroup}
+          className="grid gap-2"
+        >
+          <h3 className="text-sm font-semibold text-base-content/60">中カテゴリ</h3>
+          <div className="flex flex-wrap gap-1.5">
+            {groupNames.map((group) => {
+              return (
+                <Radio
+                  key={group}
+                  value={group}
+                  className="min-h-9 rounded-md border border-base-300 bg-base-100 px-4 py-2 text-sm font-semibold transition-colors hover:bg-base-300 rac-selected:border-primary rac-selected:bg-primary rac-selected:text-primary-content"
+                >
+                  {group}
+                </Radio>
+              );
+            })}
+          </div>
+        </RadioGroup>
+        <section className="grid gap-2">
+          <h3 className="text-sm font-semibold text-base-content/60">キー</h3>
+          <div className="flex flex-wrap gap-1.5">
+            {visibleChoices.map((choice) => {
+              const selected = choice.value === currentUsage;
+              return (
+                <Button
+                  key={choice.value}
+                  type="button"
+                  onPress={() => chooseUsage(choice.value)}
+                  className={\`min-h-9 rounded-md border px-3 py-1.5 text-sm font-medium transition-colors \${selected ? "border-primary bg-primary text-primary-content" : "border-base-300 bg-base-100 hover:bg-base-300"}\`}
+                >
+                    {displayChoiceLabel(choice)}
                   </Button>
-                );
-              })}
-            </div>
-          </section>
-        ))}
+              );
+            })}
+          </div>
+        </section>
       </div>
     </div>
   );
