@@ -15,16 +15,16 @@
   - [自作キーボードに興味がある方へ](#自作キーボードに興味のある方)
 
 ## 1. moNaについて
-moNaは[kumakey](https://x.com/km080mk)さんが制作したroBaを参考にしてできた分割型キーボードです。  
+moNaは[kumakey](https://x.com/km080mk)さんが制作したroBaを参考にしてできた分割型キーボードです。
 kumakeyさんから販売許可は戴いております。
 
 ### moNa - 左手トラックボール版
-[moNa紹介ページ](https://note.com/pooh_polo/n/n457ad4adbb69)  
-[ファームウェア](https://github.com/sayu-hub/zmk-config-moNa)  
+[moNa紹介ページ](https://note.com/pooh_polo/n/n457ad4adbb69)
+[ファームウェア](https://github.com/sayu-hub/zmk-config-moNa)
 
 ### moNa2 - 右手トラックボール版
-[moNa2紹介ページ](https://note.com/pooh_polo/n/ncfce62c909f5)  
-[ファームウェア](https://github.com/sayu-hub/zmk-config-moNa2)  
+[moNa2紹介ページ](https://note.com/pooh_polo/n/ncfce62c909f5)
+[ファームウェア](https://github.com/sayu-hub/zmk-config-moNa2)
 
 > [!WARNING]
 > 同じ商品でも修正等により、形状が多少変化する場合があります。
@@ -64,29 +64,40 @@ choc v1には使用できませんのでご注意ください。
 ### 2-4. キーキャップについて
 
 ![写真](img/moNa2_2色.png)
-[shakupanさん](https://x.com/shakupan_)作のキーキャップの3Dデータを公開しています。  
-このキーキャップはmx軸です。  
-3Dプリンタをお持ちの方は[こちら](model/keycap/17mm_keycap.3mf)からダウンロードして印刷してみてください。  
-印刷の際は側面を下にして印刷することで積層が縦になり手触りがとてもよくなります。  
+[shakupanさん](https://x.com/shakupan_)作のキーキャップの3Dデータを公開しています。
+このキーキャップはmx軸です。
+3Dプリンタをお持ちの方は[こちら](model/keycap/17mm_keycap.3mf)からダウンロードして印刷してみてください。
+印刷の際は側面を下にして印刷することで積層が縦になり手触りがとてもよくなります。
 <!-- プリント写真 -->
 <img src="img/keycap_setting_3.png" width="400">
-<img src="img/keycap_setting_1.png" width="300"> 
+<img src="img/keycap_setting_1.png" width="300">
 <img src="img/keycap_setting_2.png" width="300">
 
 ## 3. 動作確認
 [ぶらきよさん](https://x.com/kiyomasajaz)が大変細かくまとめてくださいましたので以下を参照してください。
 > [moNa2オンボーディング](docs/on-boarding.md)
 
-**大まかな流れ**
+**現在の推奨フロー**
+
+keymap だけを変える通常運用では、外部 KeymapEditor / GitHub OAuth / 毎回の GitHub Actions build は使いません。
+
+1. 右側 central に ZMK Studio 対応 firmware を一度だけ書き込む
+2. `tools/serve-zmk-studio.sh` で自分の ZMK Studio を起動する
+3. Chrome / Edge から USB で moNa2_R に接続して keymap を変更する
+4. firmware が必要な復旧時だけ `tools/serve-uf2-flasher.sh` または手動コピーで `.uf2` を流し込む
+
+ローカルで起動したブラウザから USB を使う場合は `localhost` で動作します。別端末や Tailscale URL から使う場合は、Tailscale Serve などで HTTPS として公開してください。
+
+**初回セットアップの大まかな流れ**
 1. moNa2の到着
 2. キースイッチ・キーキャップの取り付け
-3. GitHubを使用してKeymapEditorと連携/キーマップ変更
-4. ファームウェアの書き出し/ダウンロード
-5. moNa2にファームウェアを書き込む
+3. ZMK Studio 対応 firmware を右側に一度だけ書き込む
+4. self-host ZMK Studio で keymap を変更する
+5. 必要な場合だけ firmware を書き込む
 
 ## 4. 注意事項
 
-* リポバッテリーには発火等の危険性があります。あらかじめ承諾したうえで購入を検討してください。  
+* リポバッテリーには発火等の危険性があります。あらかじめ承諾したうえで購入を検討してください。
 発生した事故については責任を負いかねます。
 * 技適や法令遵守は各自の責任でお願いします。違反指摘や自警行為もご遠慮ください。
 * ロープロエンコーダは回転を滑らかにするためにカスタムしています。ご理解の上ご購入ください。
@@ -95,22 +106,22 @@ choc v1には使用できませんのでご注意ください。
 * 上記以外で何か質問等があればmoNaのサポートサーバで聞いてもらえるとありがたいです。
 
 ## 5.修正ログ
-10.18 - ねじ穴位置修正(m2) / 左右形状の一致化 / choc v2 v1 対応化  
-11.02 - moNa2 ファームウェア作成 / 動作確認 / moNa2 ケース制作    
-11.09 - 独自キーキャップ製作  
-12.12 - ケースのアップデート  
-6.11  - moNa/moNa2外形一致  
+10.18 - ねじ穴位置修正(m2) / 左右形状の一致化 / choc v2 v1 対応化
+11.02 - moNa2 ファームウェア作成 / 動作確認 / moNa2 ケース制作
+11.09 - 独自キーキャップ製作
+12.12 - ケースのアップデート
+6.11  - moNa/moNa2外形一致
 
 
 ## 自作キーボードに興味のある方
-moNa製作者である[白湯_sayu](https://x.com/Pooh_pol0)が自作キーボードの体験談及び作成方法を記事にまとめております。  
+moNa製作者である[白湯_sayu](https://x.com/Pooh_pol0)が自作キーボードの体験談及び作成方法を記事にまとめております。
 自分だけの自作キーボードを作りたい！と思っている方、良ければ目を通してみてください！
 
 [知識ゼロから完成までの自作キーボード制作過程](https://zenn.dev/pooh_polo/articles/3e381553974708)
 
-[自作無線キーボード完全解説 基本と構想編](https://note.com/pooh_polo/n/nd8f44a72ce57)  
-[自作無線キーボード完全解説 基板設計編](https://note.com/pooh_polo/n/n578894875414)  
-[自作無線キーボード完全解説 ファームウェア作成編](https://note.com/pooh_polo/n/n2a34a922b4c8)  
-[自作無線キーボード完全解説 動作確認編](https://note.com/pooh_polo/n/nbcdc97199874)  
-[自作無線キーボード完全解説 ケース設計・完成編](https://note.com/pooh_polo/n/n9bd5627195a4)  
-※基板設計/ファームウェア作成/ケース設計・完成編は有料記事になっています(購入特典あり) 
+[自作無線キーボード完全解説 基本と構想編](https://note.com/pooh_polo/n/nd8f44a72ce57)
+[自作無線キーボード完全解説 基板設計編](https://note.com/pooh_polo/n/n578894875414)
+[自作無線キーボード完全解説 ファームウェア作成編](https://note.com/pooh_polo/n/n2a34a922b4c8)
+[自作無線キーボード完全解説 動作確認編](https://note.com/pooh_polo/n/nbcdc97199874)
+[自作無線キーボード完全解説 ケース設計・完成編](https://note.com/pooh_polo/n/n9bd5627195a4)
+※基板設計/ファームウェア作成/ケース設計・完成編は有料記事になっています(購入特典あり)

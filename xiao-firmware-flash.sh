@@ -1,389 +1,374 @@
 #!/bin/bash
 
-# XIAO-SENSE 自動ファームウェア転送スクリプト
-# フロー: reset → R → reset → L
+# XIAO-SENSE UF2 flasher.
+# Default flow is recovery/full flash: reset -> R -> reset -> L.
+# For normal keymap-only updates after a successful build, use --right-only.
 
-set -e
+set -euo pipefail
 
-# 色付きログ出力
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
 CYAN='\033[0;36m'
 BOLD='\033[1m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
-# 音声出力
-say_jp() {
-    # Terminatedメッセージを防ぐため、音声を順次再生
-    say -v Kyoko "$1" >/dev/null 2>&1 || true
-}
+REPO="kazuph/zmk-config-moNa2"
+ARTIFACT_NAME="firmware"
+MOUNT_POINT="/Volumes/XIAO-SENSE"
+FIRMWARE_ROOT="$HOME/Downloads/moNa2-firmware"
+DOWNLOAD_BUILD=true
+CHECK_ONLY=false
+FLASH_MODE="all"
+MOUNT_TIMEOUT=120
 
-# 簡潔なログ出力
 log_step() {
     echo -e "${BOLD}${CYAN}$1${NC}"
 }
 
 log_success() {
-    echo -e "${GREEN}✅ $1${NC}"
+    echo -e "${GREEN}OK: $1${NC}"
+}
+
+log_warn() {
+    echo -e "${YELLOW}WARN: $1${NC}"
 }
 
 log_error() {
-    echo -e "${RED}❌ $1${NC}"
+    echo -e "${RED}ERROR: $1${NC}" >&2
 }
 
-# 動的スピナー
-spinner() {
-    local pid=$!
-    local delay=0.1
-    local spinstr='|/-\'
-    while [ "$(ps a | awk '{print $1}' | grep $pid)" ]; do
-        local temp=${spinstr#?}
-        printf "\r${CYAN}[%c] $1${NC}" "$spinstr"
-        local spinstr=$temp${spinstr%"$temp"}
-        sleep $delay
-    done
-    printf "\r"
-}
-
-# 設定
-MOUNT_POINT="/Volumes/XIAO-SENSE"
-DOWNLOADS_DIR="$HOME/Downloads"
-CHECK_BUILD=true
-
-# 使用方法を表示
 usage() {
-    echo "使用方法: $0 [オプション]"
-    echo "オプション:"
-    echo "  --skip-build   GitHub Actionsビルド確認をスキップ"
-    echo "  --help         ヘルプを表示"
+    cat <<'USAGE'
+Usage: ./xiao-firmware-flash.sh [options]
+
+Options:
+  --right-only           Flash only moNa2_R firmware. Use for keymap-only updates.
+  --all                  Flash reset -> R -> reset -> L. Default.
+  --firmware-dir <path>  Use an existing firmware directory.
+  --skip-build           Do not download GitHub Actions artifacts.
+  --check-only           Validate artifact/files and exit before touching USB.
+  --mount-point <path>   Override mount point. Default: /Volumes/XIAO-SENSE
+  --mount-timeout <sec>  Seconds to wait for XIAO-SENSE. Default: 120
+  --help                 Show this help.
+USAGE
+}
+
+die() {
+    log_error "$1"
     exit 1
 }
 
-# 引数解析
+require_cmd() {
+    command -v "$1" >/dev/null 2>&1 || die "$1 が見つかりません"
+}
+
+repo_head_sha() {
+    git rev-parse HEAD
+}
+
+repo_short_sha() {
+    git rev-parse --short HEAD
+}
+
+firmware_dir_for_head() {
+    echo "$FIRMWARE_ROOT/$(repo_short_sha)"
+}
+
+FIRMWARE_DIR=""
+
 while [[ $# -gt 0 ]]; do
-    case $1 in
-        --skip-build)
-            CHECK_BUILD=false
-            echo "${YELLOW}⏭️ ビルド確認スキップモード${NC}"
+    case "$1" in
+        --right-only)
+            FLASH_MODE="right"
             shift
+            ;;
+        --all)
+            FLASH_MODE="all"
+            shift
+            ;;
+        --firmware-dir)
+            [[ $# -ge 2 ]] || die "--firmware-dir requires a path"
+            FIRMWARE_DIR="$2"
+            shift 2
+            ;;
+        --skip-build)
+            DOWNLOAD_BUILD=false
+            shift
+            ;;
+        --check-only)
+            CHECK_ONLY=true
+            shift
+            ;;
+        --mount-point)
+            [[ $# -ge 2 ]] || die "--mount-point requires a path"
+            MOUNT_POINT="$2"
+            shift 2
+            ;;
+        --mount-timeout)
+            [[ $# -ge 2 ]] || die "--mount-timeout requires seconds"
+            MOUNT_TIMEOUT="$2"
+            shift 2
             ;;
         --help)
             usage
+            exit 0
             ;;
         *)
-            log_error "不明なオプション: $1"
             usage
+            die "不明なオプション: $1"
             ;;
     esac
 done
 
-# 最新のファームウェアフォルダを検出（作成日時順）
-find_latest_firmware() {
-    # firmwareで始まるディレクトリを作成日時順で取得
-    local latest_dir=$(ls -1dt "$DOWNLOADS_DIR"/firmware* 2>/dev/null | grep -E 'firmware( \([0-9]+\))?$' | head -1)
-    
-    if [[ -n "$latest_dir" && -d "$latest_dir" ]]; then
-        echo "$latest_dir"
-    else
-        log_error "ファームウェアフォルダが見つかりません"
-        exit 1
-    fi
+find_run_for_head() {
+    local expected_sha="$1"
+
+    gh run list -R "$REPO" --limit 50 \
+        --json status,conclusion,databaseId,headSha,workflowName,displayTitle \
+        --jq ".[] | select(.headSha == \"$expected_sha\") | select(.workflowName == \".github/workflows/build.yml\")" \
+        | jq -s 'sort_by(.databaseId) | reverse | .[0]'
 }
 
-# GitHub Actionsビルド状況確認
-check_github_build() {
-    if [[ "$CHECK_BUILD" == "false" ]]; then
-        log_step "⏭️ ビルド確認をスキップします"
-        return 0
-    fi
-    
-    log_step "🔍 GitHub Actionsビルド状況を確認中..."
-    
-    # 必要なコマンドの存在確認
-    if ! command -v gh &> /dev/null; then
-        log_error "GitHub CLI (gh) がインストールされていません"
-        echo "インストール: brew install gh"
-        exit 1
-    fi
-    
-    if ! command -v jq &> /dev/null; then
-        log_error "jq がインストールされていません"
-        echo "インストール: brew install jq"
-        exit 1
-    fi
-    
-    # 最新runの情報を取得
-    local run_info=$(gh run list -R kazuph/zmk-config-moNa2 --limit 1 --json status,conclusion,databaseId,workflowName 2>/dev/null)
-    if [[ $? -ne 0 ]]; then
-        log_error "GitHub Actionsの情報取得に失敗しました"
-        exit 1
-    fi
-    
-    local build_status=$(echo "$run_info" | jq -r '.[0].status')
-    local conclusion=$(echo "$run_info" | jq -r '.[0].conclusion')
-    local run_id=$(echo "$run_info" | jq -r '.[0].databaseId')
-    
-    log_step "📊 最新ビルド状況: $build_status"
-    
-    case "$build_status" in
-        "completed")
-            if [[ "$conclusion" == "success" ]]; then
-                log_success "ビルド成功! Artifactをダウンロードします"
-                download_latest_artifact "$run_id"
-            else
-                log_error "ビルドが失敗しています: $conclusion"
-                say_jp "ビルドが失敗しています"
-                exit 1
-            fi
-            ;;
-        "in_progress"|"queued")
-            log_step "⏳ ビルドが実行中です。完了を待機..."
-            say_jp "ビルド実行中。完了を待機します"
-            wait_for_build_completion "$run_id"
-            ;;
-        *)
-            log_error "不明なビルド状況: $build_status"
-            exit 1
-            ;;
-    esac
-}
-
-# ビルド完了待機
-wait_for_build_completion() {
+wait_for_run() {
     local run_id="$1"
-    local check_interval=10
-    
-    # 10秒間隔でチェック
-    local check_count=0
+
     while true; do
-        ((check_count++))
-        log_step "🔍 ビルド状況チェック #${check_count}"
-        
-        local run_info=$(gh run list -R kazuph/zmk-config-moNa2 --limit 1 --json status,conclusion,databaseId 2>/dev/null)
-        local build_status=$(echo "$run_info" | jq -r '.[0].status')
-        local conclusion=$(echo "$run_info" | jq -r '.[0].conclusion')
-        local current_run_id=$(echo "$run_info" | jq -r '.[0].databaseId')
-        
-        # run_idが変わった場合は新しいビルドが開始されている
-        if [[ "$current_run_id" != "$run_id" ]]; then
-            log_step "🔄 新しいビルドが開始されました"
-            run_id="$current_run_id"
-        fi
-        
-        case "$build_status" in
-            "completed")
-                if [[ "$conclusion" == "success" ]]; then
-                    log_success "ビルド完了! Artifactをダウンロードします"
-                    say_jp "ビルド完了"
-                    download_latest_artifact "$run_id"
-                    return 0
-                else
-                    log_error "ビルドが失敗しました: $conclusion"
-                    say_jp "ビルドが失敗しました"
-                    exit 1
-                fi
+        local run
+        run="$(gh run view "$run_id" -R "$REPO" --json status,conclusion,databaseId,headSha)"
+        local status conclusion
+        status="$(jq -r '.status' <<<"$run")"
+        conclusion="$(jq -r '.conclusion' <<<"$run")"
+
+        case "$status" in
+            completed)
+                [[ "$conclusion" == "success" ]] || die "対象 commit の build が失敗しています: $conclusion"
+                log_success "対象 commit の build が成功しています"
+                return 0
                 ;;
-            "in_progress"|"queued")
-                log_step "⏳ まだ実行中... ${check_interval}秒後に再チェック"
-                sleep $check_interval
+            queued|in_progress|waiting|pending)
+                log_step "Build 実行中です。10秒後に再確認します: $status"
+                sleep 10
                 ;;
             *)
-                log_error "不明なビルド状況: $build_status"
-                exit 1
+                die "不明な build 状態です: $status"
                 ;;
         esac
     done
 }
 
-# 最新Artifactダウンロード
-download_latest_artifact() {
-    local run_id="$1"
-    local artifact_name="firmware"
-    local download_dir="$DOWNLOADS_DIR"
-    local temp_dir="./temp_artifact_download"
-    
-    log_step "📦 Artifact '$artifact_name' をダウンロード中..."
-    say_jp "アーティファクトをダウンロード中"
-    
-    # 既存のfirmwareフォルダをバックアップ
-    if [[ -d "$download_dir/firmware" ]]; then
-        local backup_name="firmware_backup_$(date +%Y%m%d_%H%M%S)"
-        log_step "🗂️ 既存フォルダを $backup_name にバックアップ"
-        mv "$download_dir/firmware" "$download_dir/$backup_name"
-    fi
-    
-    # 一時ディレクトリを作成してダウンロード
-    mkdir -p "$temp_dir"
-    
-    # Artifactダウンロード（現在のgitリポジトリで実行）
-    if gh run download "$run_id" -R kazuph/zmk-config-moNa2 -D "$temp_dir" -n "$artifact_name" 2>/dev/null; then
-        log_success "Artifactダウンロード完了"
-        say_jp "ダウンロード完了"
-        
-        # ダウンロードディレクトリに移動
-        if [[ -d "$temp_dir/$artifact_name" ]]; then
-            mv "$temp_dir/$artifact_name" "$download_dir/firmware"
-        elif [[ -f "$temp_dir/$artifact_name.zip" ]]; then
-            log_step "📂 zipファイルを展開中..."
-            unzip -q "$temp_dir/$artifact_name.zip" -d "$download_dir/"
-            log_success "zip展開完了"
+download_artifact_for_head() {
+    require_cmd gh
+    require_cmd jq
+    require_cmd git
+
+    local expected_sha short_sha run run_id artifact_dir tmp_dir
+    expected_sha="$(repo_head_sha)"
+    short_sha="$(repo_short_sha)"
+    artifact_dir="$(firmware_dir_for_head)"
+
+    log_step "GitHub Actions artifact を commit 対応確認つきで取得します"
+    log_step "Expected commit: $expected_sha"
+
+    run="$(find_run_for_head "$expected_sha")"
+    [[ "$run" != "null" && -n "$run" ]] || die "現在の HEAD に対応する GitHub Actions run が見つかりません"
+
+    run_id="$(jq -r '.databaseId' <<<"$run")"
+    wait_for_run "$run_id"
+
+    tmp_dir="$(mktemp -d)"
+    mkdir -p "$FIRMWARE_ROOT"
+
+    if gh run download "$run_id" -R "$REPO" -D "$tmp_dir" -n "$ARTIFACT_NAME"; then
+        rm -rf "$artifact_dir"
+        mkdir -p "$artifact_dir"
+
+        if [[ -d "$tmp_dir/$ARTIFACT_NAME" ]]; then
+            cp -R "$tmp_dir/$ARTIFACT_NAME"/. "$artifact_dir/"
         else
-            # 直接ファイルがある場合（単一ファイルArtifact）
-            mkdir -p "$download_dir/firmware"
-            mv "$temp_dir"/* "$download_dir/firmware/"
+            cp -R "$tmp_dir"/. "$artifact_dir/"
         fi
-        
-        # 一時ディレクトリをクリーンアップ
-        rm -rf "$temp_dir"
-        
-        # firmwareフォルダの確認
-        if [[ -d "$download_dir/firmware" ]]; then
-            log_success "最新ファームウェアの準備完了"
-        else
-            log_error "firmwareフォルダが見つかりません"
-            exit 1
-        fi
+
+        {
+            echo "commit=$expected_sha"
+            echo "short_commit=$short_sha"
+            echo "run_id=$run_id"
+            echo "repo=$REPO"
+            echo "downloaded_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+        } > "$artifact_dir/SOURCE_COMMIT"
+
+        rm -rf "$tmp_dir"
+        FIRMWARE_DIR="$artifact_dir"
+        log_success "firmware を保存しました: $artifact_dir"
     else
-        log_error "Artifactダウンロードに失敗しました"
-        rm -rf "$temp_dir"
-        exit 1
+        rm -rf "$tmp_dir"
+        die "artifact download に失敗しました"
     fi
 }
 
-# ファームウェアファイルの存在確認
+resolve_firmware_dir() {
+    if [[ "$DOWNLOAD_BUILD" == "true" ]]; then
+        download_artifact_for_head
+        return
+    fi
+
+    if [[ -z "$FIRMWARE_DIR" ]]; then
+        FIRMWARE_DIR="$(firmware_dir_for_head)"
+    fi
+
+    [[ -d "$FIRMWARE_DIR" ]] || die "firmware directory が見つかりません: $FIRMWARE_DIR"
+}
+
+check_source_commit() {
+    local manifest="$FIRMWARE_DIR/SOURCE_COMMIT"
+
+    if [[ ! -f "$manifest" ]]; then
+        log_warn "SOURCE_COMMIT がありません。--firmware-dir 指定時のみ許容します: $FIRMWARE_DIR"
+        return 0
+    fi
+
+    local expected actual
+    expected="$(repo_head_sha)"
+    actual="$(grep '^commit=' "$manifest" | cut -d= -f2-)"
+    [[ "$actual" == "$expected" ]] || die "firmware commit が現在の HEAD と一致しません: $actual != $expected"
+}
+
+firmware_path() {
+    local kind="$1"
+    case "$kind" in
+        reset) echo "$FIRMWARE_DIR/settings_reset-seeeduino_xiao_ble-zmk.uf2" ;;
+        right) echo "$FIRMWARE_DIR/moNa2_R rgbled_adapter-seeeduino_xiao_ble-zmk.uf2" ;;
+        left) echo "$FIRMWARE_DIR/moNa2_L rgbled_adapter-seeeduino_xiao_ble-zmk.uf2" ;;
+        *) die "unknown firmware kind: $kind" ;;
+    esac
+}
+
 check_firmware_files() {
-    local firmware_dir="$1"
-    local reset_file="$firmware_dir/settings_reset-seeeduino_xiao_ble-zmk.uf2"
-    local left_file="$firmware_dir/moNa2_L rgbled_adapter-seeeduino_xiao_ble-zmk.uf2"
-    local right_file="$firmware_dir/moNa2_R rgbled_adapter-seeeduino_xiao_ble-zmk.uf2"
-    
-    if [[ ! -f "$reset_file" ]]; then
-        log_error "リセットファイルが見つかりません"
-        exit 1
+    local reset_file right_file left_file
+    reset_file="$(firmware_path reset)"
+    right_file="$(firmware_path right)"
+    left_file="$(firmware_path left)"
+
+    [[ -f "$right_file" ]] || die "右側 firmware が見つかりません: $right_file"
+
+    if [[ "$FLASH_MODE" == "all" ]]; then
+        [[ -f "$reset_file" ]] || die "settings reset firmware が見つかりません: $reset_file"
+        [[ -f "$left_file" ]] || die "左側 firmware が見つかりません: $left_file"
     fi
-    
-    if [[ ! -f "$left_file" ]]; then
-        log_error "左側ファームウェアが見つかりません"
-        exit 1
-    fi
-    
-    if [[ ! -f "$right_file" ]]; then
-        log_error "右側ファームウェアが見つかりません"
-        exit 1
-    fi
-    
-    log_success "ファイル確認完了"
+
+    log_success "firmware file を確認しました: $FIRMWARE_DIR"
 }
 
-# マウント待ち
+assert_side_file() {
+    local src="$1"
+    local side="$2"
+    local base
+    base="$(basename "$src")"
+
+    case "$side" in
+        reset) [[ "$base" == settings_reset-* ]] || die "settings reset ではない file です: $base" ;;
+        right) [[ "$base" == moNa2_R* ]] || die "右側 firmware ではない file です: $base" ;;
+        left) [[ "$base" == moNa2_L* ]] || die "左側 firmware ではない file です: $base" ;;
+        *) die "unknown side: $side" ;;
+    esac
+}
+
 wait_for_mount() {
     local step="$1"
-    local device_name="$2"
-    local instruction="$3"
-    
-    echo ""
-    log_step "[$step/4] $device_name"
-    echo "📋 $instruction"
-    
-    case "$step" in
-        "1") say_jp "右キーボードを接続" ;;
-        "2") say_jp "再度右キーボードを接続" ;;
-        "3") say_jp "左キーボードを接続" ;;
-        "4") say_jp "再度左キーボードを接続" ;;
-    esac
-    
+    local label="$2"
     local count=0
+
+    echo ""
+    log_step "[$step] $label"
+    log_step "リセットボタンを2回押して XIAO-SENSE を mount してください"
+
     while [[ ! -d "$MOUNT_POINT" ]]; do
-        printf "\r\033[K${YELLOW}⏳ 接続待ち %ds (リセットボタン2回押し→USB)${NC}" $count
+        if (( count >= MOUNT_TIMEOUT )); then
+            die "mount timeout: $MOUNT_POINT が見つかりません"
+        fi
+        printf "\r${YELLOW}waiting... %ds${NC}" "$count"
         sleep 1
         ((count++))
     done
-    
-    printf "\r\033[K${GREEN}✅ 接続確認! XIAO-SENSE検出${NC}\n"
-    say_jp "接続確認"
-    sleep 1
+
+    printf "\r${GREEN}mounted: %s${NC}\n" "$MOUNT_POINT"
 }
 
-# ファームウェアコピー
+wait_for_unmount() {
+    local count=0
+
+    while [[ -d "$MOUNT_POINT" ]]; do
+        if (( count >= 30 )); then
+            die "UF2 コピー後に自動 unmount しませんでした: $MOUNT_POINT"
+        fi
+        printf "\r${CYAN}unmount wait... %ds${NC}" "$count"
+        sleep 1
+        ((count++))
+    done
+
+    printf "\r${GREEN}unmounted${NC}\n"
+}
+
 copy_firmware() {
     local src_file="$1"
     local description="$2"
-    
-    if [[ ! -f "$src_file" ]]; then
-        log_error "ファイルが見つかりません: $src_file"
-        exit 1
+    local side="$3"
+
+    [[ -f "$src_file" ]] || die "firmware file が見つかりません: $src_file"
+    [[ -d "$MOUNT_POINT" ]] || die "copy 前に mount point がありません: $MOUNT_POINT"
+    assert_side_file "$src_file" "$side"
+
+    log_step "$description を書き込みます: $(basename "$src_file")"
+
+    if cp "$src_file" "$MOUNT_POINT/" 2>/tmp/mona2-uf2-copy.err; then
+        wait_for_unmount
+        log_success "$description 完了"
+        return 0
     fi
-    
-    # コピー処理
-    printf "${CYAN}📁 $description を書き込み中...${NC}"
-    cp "$src_file" "$MOUNT_POINT/" 2>/dev/null || true
-    printf "\r\033[K${GREEN}✅ $description 完了${NC}\n"
-    
-    case "$description" in
-        *"リセット"*) say_jp "リセット完了" ;;
-        *"右"*) say_jp "右ファームウェア転送完了" ;;
-        *"左"*) say_jp "左ファームウェア転送完了" ;;
-    esac
-    
-    # アンマウント待ち
-    local count=0
-    while [[ -d "$MOUNT_POINT" ]]; do
-        printf "\r\033[K${CYAN}⏳ 自動切断待ち... %ds${NC}" $count
-        sleep 1
-        ((count++))
-    done
-    
-    printf "\r\033[K${GREEN}🔌 切断完了!${NC}\n"
-    say_jp "切断完了"
-    sleep 1
+
+    if [[ ! -d "$MOUNT_POINT" ]]; then
+        log_warn "copy は非ゼロ終了でしたが、UF2 bootloader が自動 unmount しました。正常系として扱います。"
+        log_success "$description 完了"
+        return 0
+    fi
+
+    log_error "copy に失敗しました:"
+    cat /tmp/mona2-uf2-copy.err >&2 || true
+    exit 1
 }
 
-# メイン処理
 main() {
-    echo -e "${BOLD}${CYAN}🚀 XIAO-SENSE 自動ファームウェア転送${NC}"
-    echo ""
-    say_jp "ファームウェアを転送します"
-    
-    # GitHub Actionsビルド確認・Artifactダウンロード
-    check_github_build
-    
-    # 最新ファームウェア検出
-    firmware_dir=$(find_latest_firmware)
-    echo "📦 フォルダ: $(basename "$firmware_dir")"
-    
-    # ファームウェアファイル確認
-    check_firmware_files "$firmware_dir"
-    
-    # ファームウェアパス設定
-    reset_file="$firmware_dir/settings_reset-seeeduino_xiao_ble-zmk.uf2"
-    left_file="$firmware_dir/moNa2_L rgbled_adapter-seeeduino_xiao_ble-zmk.uf2"
-    right_file="$firmware_dir/moNa2_R rgbled_adapter-seeeduino_xiao_ble-zmk.uf2"
-    
-    echo -e "${YELLOW}🔄 手順: 右リセット → 右R書き込み → 左リセット → 左L書き込み${NC}"
-    
-    # Step 1: 右キーボードを接続してリセット
-    wait_for_mount "1" "右（リセット）" "右キーボードを接続"
-    copy_firmware "$reset_file" "リセットファームウェア"
-    
-    # Step 2: 右キーボードを接続して右ファームウェア転送
-    wait_for_mount "2" "右（R書き込み）" "右キーボードを接続"
-    copy_firmware "$right_file" "右ファームウェア"
-    
-    # Step 3: 左キーボードを接続してリセット
-    wait_for_mount "3" "左（リセット）" "左キーボードを接続"
-    copy_firmware "$reset_file" "リセットファームウェア"
-    
-    # Step 4: 左キーボードを接続して左ファームウェア転送
-    wait_for_mount "4" "左（L書き込み）" "左キーボードを接続"
-    copy_firmware "$left_file" "左ファームウェア"
-    
-    echo ""
-    log_success "ファームウェア転送完了！"
-    say_jp "すべての転送が完了しました。キーボードをテスト"
-    echo "🎹 ZMKキーボードの動作確認"
+    echo -e "${BOLD}${CYAN}moNa2 XIAO-SENSE UF2 flasher${NC}"
+
+    resolve_firmware_dir
+    check_source_commit
+    check_firmware_files
+
+    echo "firmware dir: $FIRMWARE_DIR"
+    echo "mode: $FLASH_MODE"
+
+    if [[ "$CHECK_ONLY" == "true" ]]; then
+        log_success "check-only 完了。USB には触っていません。"
+        return 0
+    fi
+
+    if [[ "$FLASH_MODE" == "right" ]]; then
+        wait_for_mount "1/1" "右側 R firmware"
+        copy_firmware "$(firmware_path right)" "右側 firmware" "right"
+        return 0
+    fi
+
+    wait_for_mount "1/4" "右側 settings reset"
+    copy_firmware "$(firmware_path reset)" "右側 settings reset" "reset"
+
+    wait_for_mount "2/4" "右側 R firmware"
+    copy_firmware "$(firmware_path right)" "右側 firmware" "right"
+
+    wait_for_mount "3/4" "左側 settings reset"
+    copy_firmware "$(firmware_path reset)" "左側 settings reset" "reset"
+
+    wait_for_mount "4/4" "左側 L firmware"
+    copy_firmware "$(firmware_path left)" "左側 firmware" "left"
 }
 
-# 実行
 main "$@"
