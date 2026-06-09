@@ -14,6 +14,10 @@ if ! type -P python3 >/dev/null 2>&1; then
 fi
 
 PYTHON_BIN="$(type -P python3)"
+TAILSCALE_BIN="$(type -P tailscale || true)"
+if [[ -z "$TAILSCALE_BIN" && -x /Applications/Tailscale.app/Contents/MacOS/Tailscale ]]; then
+    TAILSCALE_BIN="/Applications/Tailscale.app/Contents/MacOS/Tailscale"
+fi
 
 cat <<INFO
 
@@ -26,8 +30,7 @@ Firmware preset root:
 
 Chrome treats localhost as a secure context, so File System Access API works there.
 For access through a Tailscale URL, expose it over HTTPS:
-  tailscale serve --bg http://127.0.0.1:$PORT
-  tailscale serve --bg --https=443 http://127.0.0.1:$PORT
+  ${TAILSCALE_BIN:-tailscale} serve --bg --https=$PORT http://127.0.0.1:$PORT
 
 INFO
 

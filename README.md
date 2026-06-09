@@ -86,7 +86,7 @@ keymap だけを変える通常運用では、外部 KeymapEditor / GitHub OAuth
 3. Chrome / Edge から USB で moNa2_R に接続して keymap を変更する
 4. firmware が必要な復旧時だけ `tools/serve-uf2-flasher.sh` でプリセット済み `.uf2` を流し込む、または手動コピーする
 
-ローカルで起動したブラウザから USB を使う場合は `localhost` で動作します。別端末や Tailscale URL から使う場合は、Tailscale Serve などで HTTPS として公開してください。
+ローカルで起動したブラウザから USB を使う場合は `localhost` で動作します。別端末や Tailscale URL から使う場合は、既存の `:443` route を上書きしないよう専用ポートで Tailscale Serve してください。
 
 **初回セットアップの大まかな流れ**
 1. moNa2の到着

@@ -8,26 +8,33 @@ PORT="${PORT:-5173}"
 HOST="${HOST:-127.0.0.1}"
 REPO_URL="https://github.com/zmkfirmware/zmk-studio"
 
-if ! command -v git >/dev/null 2>&1; then
+if ! type -P git >/dev/null 2>&1; then
     echo "ERROR: git is required" >&2
     exit 1
 fi
 
-if ! command -v npm >/dev/null 2>&1; then
+if ! type -P npm >/dev/null 2>&1; then
     echo "ERROR: npm is required" >&2
     exit 1
+fi
+
+GIT_BIN="$(type -P git)"
+NPM_BIN="$(type -P npm)"
+TAILSCALE_BIN="$(type -P tailscale || true)"
+if [[ -z "$TAILSCALE_BIN" && -x /Applications/Tailscale.app/Contents/MacOS/Tailscale ]]; then
+    TAILSCALE_BIN="/Applications/Tailscale.app/Contents/MacOS/Tailscale"
 fi
 
 mkdir -p "$(dirname "$STUDIO_DIR")"
 
 if [[ ! -d "$STUDIO_DIR/.git" ]]; then
-    git clone --depth 1 "$REPO_URL" "$STUDIO_DIR"
+    "$GIT_BIN" clone --depth 1 "$REPO_URL" "$STUDIO_DIR"
 else
-    git -C "$STUDIO_DIR" pull --ff-only
+    "$GIT_BIN" -C "$STUDIO_DIR" pull --ff-only
 fi
 
 cd "$STUDIO_DIR"
-npm ci
+"$NPM_BIN" ci
 
 cat <<INFO
 
@@ -35,11 +42,10 @@ ZMK Studio self-host server
 Local URL:
   http://$HOST:$PORT
 
-For Web Serial from another device, expose this local server over HTTPS.
-With Tailscale Serve, use one of these from another shell:
-  tailscale serve --bg http://127.0.0.1:$PORT
-  tailscale serve --bg --https=443 http://127.0.0.1:$PORT
+For WebUSB from another device, expose this local server over HTTPS.
+With Tailscale Serve, prefer a dedicated HTTPS port so existing :443 routes are not overwritten:
+  ${TAILSCALE_BIN:-tailscale} serve --bg --https=$PORT http://127.0.0.1:$PORT
 
 INFO
 
-npm run dev -- --host "$HOST" --port "$PORT"
+"$NPM_BIN" run dev -- --host "$HOST" --port "$PORT"
