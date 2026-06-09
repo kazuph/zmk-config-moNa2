@@ -96,7 +96,7 @@ new file mode 100644
 index 0000000..67f0566
 --- /dev/null
 +++ b/app/src/behaviors/behavior_apple_fn.c
-@@ -0,0 +1,56 @@
+@@ -0,0 +1,55 @@
 +/*
 + * Copyright (c) 2026 The ZMK Contributors
 + *
@@ -150,11 +150,8 @@ index 0000000..67f0566
 +    .binding_released = on_keymap_binding_released,
 +};
 +
-+#define APPLE_FN_INST(n)                                                                          \
-+    BEHAVIOR_DT_INST_DEFINE(n, NULL, NULL, NULL, NULL, POST_KERNEL,                                \
-+                            CONFIG_KERNEL_INIT_PRIORITY_DEFAULT, &behavior_apple_fn_driver_api);
-+
-+DT_INST_FOREACH_STATUS_OKAY(APPLE_FN_INST)
++BEHAVIOR_DT_INST_DEFINE(0, NULL, NULL, NULL, NULL, POST_KERNEL,
++                        CONFIG_KERNEL_INIT_PRIORITY_DEFAULT, &behavior_apple_fn_driver_api);
 diff --git a/app/src/hid.c b/app/src/hid.c
 index c050f06..792bcbb 100644
 --- a/app/src/hid.c
