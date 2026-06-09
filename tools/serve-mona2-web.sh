@@ -40,21 +40,17 @@ if [[ ! -d "$STUDIO_DIR/.git" ]]; then
     mkdir -p "$(dirname "$STUDIO_DIR")"
     "$GIT_BIN" clone "$REPO_URL" "$STUDIO_DIR"
 else
+    "$GIT_BIN" -C "$STUDIO_DIR" restore \
+        src/keyboard/behavior-short-names.json \
+        src/hid-usage-name-overrides.json \
+        src/keyboard/Key.tsx
     "$GIT_BIN" -C "$STUDIO_DIR" pull --ff-only
 fi
 
 (
     cd "$STUDIO_DIR"
     "$NPM_BIN" ci
-    MONA2_REPO_ROOT="$ROOT_DIR" "$NODE_BIN" -e '
-const fs = require("fs");
-const path = require("path");
-const studioPath = path.join(process.cwd(), "src/keyboard/behavior-short-names.json");
-const overlayPath = path.join(process.env.MONA2_REPO_ROOT, "tools/zmk-studio-mona2-short-names.json");
-const base = JSON.parse(fs.readFileSync(studioPath, "utf8"));
-const overlay = JSON.parse(fs.readFileSync(overlayPath, "utf8"));
-fs.writeFileSync(studioPath, JSON.stringify({ ...base, ...overlay }, null, 2) + "\n");
-'
+    "$NODE_BIN" "$ROOT_DIR/tools/patch-zmk-studio-mona2-ui.js" "$STUDIO_DIR"
     "$NPM_BIN" run build -- --base=/studio/
 )
 

@@ -1,0 +1,12 @@
+{
+  "7": {
+    "224": { "short": "⌃", "med": "⌃ Ctrl", "long": "Control" },
+    "225": { "short": "⇧", "med": "⇧ Shift", "long": "Shift" },
+    "226": { "short": "⌥", "med": "⌥ Opt", "long": "Option" },
+    "227": { "short": "⌘", "med": "⌘ Cmd", "long": "Command" },
+    "228": { "short": "⌃", "med": "⌃ Ctrl", "long": "Right Control" },
+    "229": { "short": "⇧", "med": "⇧ Shift", "long": "Right Shift" },
+    "230": { "short": "⌥", "med": "⌥ Opt", "long": "Right Option" },
+    "231": { "short": "⌘", "med": "⌘ Cmd", "long": "Right Command" }
+  }
+}
