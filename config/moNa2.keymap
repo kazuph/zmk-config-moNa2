@@ -347,7 +347,7 @@
 &kp NUMBER_1  &kp NUMBER_2  &kp NUMBER_3  &kp NUMBER_4  &kp NUMBER_5                     &m_command_plus  &m_command_minus  &trans  &trans     &trans
 &kp NUMBER_6  &kp NUMBER_7  &kp NUMBER_8  &kp NUMBER_9  &kp NUMBER_0            &trans   &kp LEFT         &kp DOWN          &kp UP  &kp RIGHT  &kp RIGHT
 &kp F1        &kp F2        &kp F3        &kp F7        &kp F8        &kp F9    &kp F10  &kp F11          &kp F12           &trans  &trans     &trans
-&trans        &trans        &trans        &mo 3         &trans        &trans    &trans   &kp F24                                                &trans
+&trans        &trans        &trans        &mo 3         &trans        &trans    &trans   &kp GLOBE                                              &trans
             >;
 
             sensor-bindings = <&scroll_up_down>;

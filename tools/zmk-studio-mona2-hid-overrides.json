@@ -2,7 +2,6 @@
   "7": {
     "40": { "short": "↵", "med": "↵", "long": "Return" },
     "42": { "short": "⌫", "med": "⌫", "long": "Backspace" },
-    "115": { "short": "音声", "med": "音声入力", "long": "音声入力" },
     "224": { "short": "⌃", "med": "⌃ Ctrl", "long": "Control" },
     "225": { "short": "⇧", "med": "⇧ Shift", "long": "Shift" },
     "226": { "short": "⌥", "med": "⌥ Opt", "long": "Option" },
@@ -13,5 +12,8 @@
     "231": { "short": "⌘", "med": "⌘ Cmd", "long": "Right Command" },
     "144": { "short": "かな", "med": "かな", "long": "かな" },
     "145": { "short": "英", "med": "英", "long": "英数" }
+  },
+  "12": {
+    "669": { "short": "🌐", "med": "音声", "long": "Globe" }
   }
 }
