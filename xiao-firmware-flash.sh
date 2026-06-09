@@ -60,15 +60,19 @@ die() {
 }
 
 require_cmd() {
-    command -v "$1" >/dev/null 2>&1 || die "$1 が見つかりません"
+    type -P "$1" >/dev/null 2>&1 || die "$1 が見つかりません"
+}
+
+cmd_path() {
+    type -P "$1"
 }
 
 repo_head_sha() {
-    git rev-parse HEAD
+    "$GIT_BIN" rev-parse HEAD
 }
 
 repo_short_sha() {
-    git rev-parse --short HEAD
+    "$GIT_BIN" rev-parse --short HEAD
 }
 
 firmware_dir_for_head() {
@@ -121,13 +125,25 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
+require_cmd gh
+require_cmd jq
+require_cmd git
+require_cmd cp
+require_cmd rm
+
+GH_BIN="$(cmd_path gh)"
+JQ_BIN="$(cmd_path jq)"
+GIT_BIN="$(cmd_path git)"
+CP_BIN="$(cmd_path cp)"
+RM_BIN="$(cmd_path rm)"
+
 find_run_for_head() {
     local expected_sha="$1"
 
-    gh run list -R "$REPO" --limit 50 \
+    "$GH_BIN" run list -R "$REPO" --limit 50 \
         --json status,conclusion,databaseId,headSha,workflowName,displayTitle \
         --jq ".[] | select(.headSha == \"$expected_sha\") | select(.workflowName == \".github/workflows/build.yml\")" \
-        | jq -s 'sort_by(.databaseId) | reverse | .[0]'
+        | "$JQ_BIN" -s 'sort_by(.databaseId) | reverse | .[0]'
 }
 
 wait_for_run() {
@@ -135,10 +151,10 @@ wait_for_run() {
 
     while true; do
         local run
-        run="$(gh run view "$run_id" -R "$REPO" --json status,conclusion,databaseId,headSha)"
+        run="$("$GH_BIN" run view "$run_id" -R "$REPO" --json status,conclusion,databaseId,headSha)"
         local status conclusion
-        status="$(jq -r '.status' <<<"$run")"
-        conclusion="$(jq -r '.conclusion' <<<"$run")"
+        status="$("$JQ_BIN" -r '.status' <<<"$run")"
+        conclusion="$("$JQ_BIN" -r '.conclusion' <<<"$run")"
 
         case "$status" in
             completed)
@@ -158,10 +174,6 @@ wait_for_run() {
 }
 
 download_artifact_for_head() {
-    require_cmd gh
-    require_cmd jq
-    require_cmd git
-
     local expected_sha short_sha run run_id artifact_dir tmp_dir
     expected_sha="$(repo_head_sha)"
     short_sha="$(repo_short_sha)"
@@ -173,20 +185,20 @@ download_artifact_for_head() {
     run="$(find_run_for_head "$expected_sha")"
     [[ "$run" != "null" && -n "$run" ]] || die "現在の HEAD に対応する GitHub Actions run が見つかりません"
 
-    run_id="$(jq -r '.databaseId' <<<"$run")"
+    run_id="$("$JQ_BIN" -r '.databaseId' <<<"$run")"
     wait_for_run "$run_id"
 
     tmp_dir="$(mktemp -d)"
     mkdir -p "$FIRMWARE_ROOT"
 
-    if gh run download "$run_id" -R "$REPO" -D "$tmp_dir" -n "$ARTIFACT_NAME"; then
-        rm -rf "$artifact_dir"
+    if "$GH_BIN" run download "$run_id" -R "$REPO" -D "$tmp_dir" -n "$ARTIFACT_NAME"; then
+        "$RM_BIN" -rf "$artifact_dir"
         mkdir -p "$artifact_dir"
 
         if [[ -d "$tmp_dir/$ARTIFACT_NAME" ]]; then
-            cp -R "$tmp_dir/$ARTIFACT_NAME"/. "$artifact_dir/"
+            "$CP_BIN" -R "$tmp_dir/$ARTIFACT_NAME"/. "$artifact_dir/"
         else
-            cp -R "$tmp_dir"/. "$artifact_dir/"
+            "$CP_BIN" -R "$tmp_dir"/. "$artifact_dir/"
         fi
 
         {
@@ -197,11 +209,11 @@ download_artifact_for_head() {
             echo "downloaded_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
         } > "$artifact_dir/SOURCE_COMMIT"
 
-        rm -rf "$tmp_dir"
+        "$RM_BIN" -rf "$tmp_dir"
         FIRMWARE_DIR="$artifact_dir"
         log_success "firmware を保存しました: $artifact_dir"
     else
-        rm -rf "$tmp_dir"
+        "$RM_BIN" -rf "$tmp_dir"
         die "artifact download に失敗しました"
     fi
 }
@@ -320,7 +332,7 @@ copy_firmware() {
 
     log_step "$description を書き込みます: $(basename "$src_file")"
 
-    if cp "$src_file" "$MOUNT_POINT/" 2>/tmp/mona2-uf2-copy.err; then
+    if "$CP_BIN" "$src_file" "$MOUNT_POINT/" 2>/tmp/mona2-uf2-copy.err; then
         wait_for_unmount
         log_success "$description 完了"
         return 0
