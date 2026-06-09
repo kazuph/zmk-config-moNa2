@@ -43,7 +43,8 @@ else
     "$GIT_BIN" -C "$STUDIO_DIR" restore \
         src/keyboard/behavior-short-names.json \
         src/hid-usage-name-overrides.json \
-        src/keyboard/Key.tsx
+        src/keyboard/Key.tsx \
+        src/keyboard/Keymap.tsx
     "$GIT_BIN" -C "$STUDIO_DIR" pull --ff-only
 fi
 
