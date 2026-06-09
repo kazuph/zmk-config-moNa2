@@ -27,7 +27,7 @@ new file mode 100644
 index 0000000..0df100f
 --- /dev/null
 +++ b/app/dts/behaviors/apple_fn.dtsi
-@@ -0,0 +1,18 @@
+@@ -0,0 +1,17 @@
 +/*
 + * Copyright (c) 2026 The ZMK Contributors
 + *
@@ -38,9 +38,6 @@ index 0000000..0df100f
 +
 +/ {
 +    behaviors {
-+#if ZMK_BEHAVIOR_OMIT(APPLE_FN)
-+    /omit-if-no-ref/
-+#endif
 +        apple_fn: apple_fn {
 +            compatible = "zmk,behavior-apple-fn";
 +            #binding-cells = <0>;
