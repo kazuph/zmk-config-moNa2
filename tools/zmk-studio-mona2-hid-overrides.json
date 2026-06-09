@@ -1,5 +1,7 @@
 {
   "7": {
+    "40": { "short": "↵", "med": "↵", "long": "Return" },
+    "42": { "short": "⌫", "med": "⌫", "long": "Backspace" },
     "224": { "short": "⌃", "med": "⌃ Ctrl", "long": "Control" },
     "225": { "short": "⇧", "med": "⇧ Shift", "long": "Shift" },
     "226": { "short": "⌥", "med": "⌥ Opt", "long": "Option" },
