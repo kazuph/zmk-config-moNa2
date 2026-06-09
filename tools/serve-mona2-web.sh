@@ -22,10 +22,15 @@ if ! type -P npm >/dev/null 2>&1; then
     echo "ERROR: npm is required" >&2
     exit 1
 fi
+if ! type -P node >/dev/null 2>&1; then
+    echo "ERROR: node is required" >&2
+    exit 1
+fi
 
 PYTHON_BIN="$(type -P python3)"
 GIT_BIN="$(type -P git)"
 NPM_BIN="$(type -P npm)"
+NODE_BIN="$(type -P node)"
 TAILSCALE_BIN="$(type -P tailscale || true)"
 if [[ -z "$TAILSCALE_BIN" && -x /Applications/Tailscale.app/Contents/MacOS/Tailscale ]]; then
     TAILSCALE_BIN="/Applications/Tailscale.app/Contents/MacOS/Tailscale"
@@ -41,6 +46,15 @@ fi
 (
     cd "$STUDIO_DIR"
     "$NPM_BIN" ci
+    MONA2_REPO_ROOT="$ROOT_DIR" "$NODE_BIN" -e '
+const fs = require("fs");
+const path = require("path");
+const studioPath = path.join(process.cwd(), "src/keyboard/behavior-short-names.json");
+const overlayPath = path.join(process.env.MONA2_REPO_ROOT, "tools/zmk-studio-mona2-short-names.json");
+const base = JSON.parse(fs.readFileSync(studioPath, "utf8"));
+const overlay = JSON.parse(fs.readFileSync(overlayPath, "utf8"));
+fs.writeFileSync(studioPath, JSON.stringify({ ...base, ...overlay }, null, 2) + "\n");
+'
     "$NPM_BIN" run build -- --base=/studio/
 )
 
