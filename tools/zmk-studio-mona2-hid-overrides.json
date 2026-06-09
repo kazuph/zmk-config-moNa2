@@ -7,6 +7,8 @@
     "228": { "short": "⌃", "med": "⌃ Ctrl", "long": "Right Control" },
     "229": { "short": "⇧", "med": "⇧ Shift", "long": "Right Shift" },
     "230": { "short": "⌥", "med": "⌥ Opt", "long": "Right Option" },
-    "231": { "short": "⌘", "med": "⌘ Cmd", "long": "Right Command" }
+    "231": { "short": "⌘", "med": "⌘ Cmd", "long": "Right Command" },
+    "144": { "short": "かな", "med": "かな", "long": "かな" },
+    "145": { "short": "英", "med": "英", "long": "英数" }
   }
 }
