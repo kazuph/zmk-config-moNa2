@@ -99,7 +99,10 @@ jobs:
 
       - name: Apply local ZMK patches
         working-directory: ${{ env.base_dir }}
-        run: git -C zmk apply "${GITHUB_WORKSPACE}/zmk-patches/apple-fn-behavior.patch"
+        run: |
+          git -C zmk reset --hard
+          git -C zmk clean -fd
+          git -C zmk apply "${GITHUB_WORKSPACE}/zmk-patches/apple-fn-behavior.patch"
 
       - name: West Zephyr export
         working-directory: ${{ env.base_dir }}
