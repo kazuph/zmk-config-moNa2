@@ -161,6 +161,7 @@ moNa2 の通常 keymap 変更フローから、他人の Web サイト、GitHub 
 
 検証:
 - self-host flasher に現在 commit の右側、左側、settings reset がプリセット表示されること。
+- `tools/check-mona2-flow.sh` で Studio / flasher / Tailscale / firmware preset / USB 状態をまとめて確認できること。
 - dummy directory への書き込みでファイルコピーが成功すること。
 - 実機 bootloader の `XIAO-SENSE` へコピーして自動アンマウントすること。
 - 誤った左右ファイルを選んだときに警告が出ること。

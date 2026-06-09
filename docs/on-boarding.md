@@ -44,6 +44,12 @@ UF2 をブラウザから流し込みたい場合は、以下の self-host flash
 ./tools/serve-uf2-flasher.sh
 ```
 
+Studio / flasher / Tailscale / firmware preset / USB の状態をまとめて確認する場合は、以下を実行します。
+
+```
+./tools/check-mona2-flow.sh
+```
+
 ## 2. 右側だけでよい場合と左側も必要な場合
 
 moNa2 は右側が central / master、左側が peripheral / slave です。
@@ -199,6 +205,12 @@ Chrome / Edge で `http://localhost:8787` を開き、UF2 ファイルと `XIAO-
 ```
 
 `~/Downloads/moNa2-firmware/<現在の commit>/` に GitHub Actions の成果物が保存されている場合、flasher は右側、左側、settings reset の UF2 をプリセットとして表示します。通常は右側 central のプリセットを選び、`XIAO-SENSE` ドライブだけを選択してください。別の UF2 を使う場合だけ、手動で `UF2 を選ぶ` を使います。
+
+状態確認に迷ったら、以下を実行してください。
+
+```
+./tools/check-mona2-flow.sh
+```
 
 ## 7. moNa2 の起動
 
