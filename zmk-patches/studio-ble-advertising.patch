@@ -1,3 +1,15 @@
+diff --git a/app/include/zmk/studio/rpc.h b/app/include/zmk/studio/rpc.h
+index e223b7a..fbfdac5 100644
+--- a/app/include/zmk/studio/rpc.h
++++ b/app/include/zmk/studio/rpc.h
+@@ -218,6 +218,7 @@ zmk_studio_Response zmk_rpc_subsystem_delegate_to_subs(const struct zmk_rpc_subs
+ struct ring_buf *zmk_rpc_get_tx_buf(void);
+ struct ring_buf *zmk_rpc_get_rx_buf(void);
+ void zmk_rpc_rx_notify(void);
++int zmk_rpc_select_transport(enum zmk_transport transport);
+
+ #define ZMK_RPC_TRANSPORT(name, _transport, _rx_start, _rx_stop, _tx_user_data, _tx_notify)        \
+     STRUCT_SECTION_ITERABLE(zmk_rpc_transport, name) = {                                           \
 diff --git a/app/src/ble.c b/app/src/ble.c
 index 7176bd0..c0ed144 100644
 --- a/app/src/ble.c
@@ -93,7 +105,7 @@ index 7176bd0..c0ed144 100644
          bt_unpair(BT_ID_DEFAULT, dst);
          return;
 diff --git a/app/src/studio/gatt_rpc_transport.c b/app/src/studio/gatt_rpc_transport.c
-index f0ab315..6f2b809 100644
+index f0ab315..a5f62f4 100644
 --- a/app/src/studio/gatt_rpc_transport.c
 +++ b/app/src/studio/gatt_rpc_transport.c
 @@ -9,6 +9,7 @@
@@ -131,7 +143,14 @@ index f0ab315..6f2b809 100644
      if (conn) {
          uint8_t latency = notif_enabled ? CONFIG_ZMK_STUDIO_TRANSPORT_BLE_PREF_LATENCY
                                          : CONFIG_BT_PERIPHERAL_PREF_LATENCY;
-@@ -66,6 +78,15 @@ static ssize_t write_rpc_req(struct bt_conn *conn, const struct bt_gatt_attr *at
+@@ -62,10 +74,21 @@ static ssize_t read_rpc_resp(struct bt_conn *conn, const struct bt_gatt_attr *at
+
+ static ssize_t write_rpc_req(struct bt_conn *conn, const struct bt_gatt_attr *attr, const void *buf,
+                              uint16_t len, uint16_t offset, uint8_t flags) {
+-    if (!handling_rx) {
++    int err = zmk_rpc_select_transport(ZMK_TRANSPORT_BLE);
++    if (err < 0 || !handling_rx) {
++        LOG_WRN("Dropping BLE Studio RPC write because BLE transport is not active (%d)", err);
          return len;
      }
 
@@ -147,7 +166,7 @@ index f0ab315..6f2b809 100644
      uint32_t copied = 0;
      struct ring_buf *rpc_buf = zmk_rpc_get_rx_buf();
      while (copied < len) {
-@@ -89,9 +110,9 @@ BT_GATT_SERVICE_DEFINE(
+@@ -89,9 +112,9 @@ BT_GATT_SERVICE_DEFINE(
      rpc_interface, BT_GATT_PRIMARY_SERVICE(BT_UUID_DECLARE_128(ZMK_STUDIO_BT_SERVICE_UUID)),
      BT_GATT_CHARACTERISTIC(BT_UUID_DECLARE_128(ZMK_STUDIO_BT_RPC_CHRC_UUID),
                             BT_GATT_CHRC_WRITE | BT_GATT_CHRC_READ | BT_GATT_CHRC_INDICATE,
@@ -160,7 +179,7 @@ index f0ab315..6f2b809 100644
 
  static uint16_t get_notify_size_for_conn(struct bt_conn *conn) {
      uint16_t notify_size = 23; // Default MTU size unless negotiated higher
-@@ -104,7 +125,7 @@ static uint16_t get_notify_size_for_conn(struct bt_conn *conn) {
+@@ -104,7 +127,7 @@ static uint16_t get_notify_size_for_conn(struct bt_conn *conn) {
  }
 
  static void refresh_notify_size(void) {
@@ -169,7 +188,7 @@ index f0ab315..6f2b809 100644
 
      uint16_t ns = get_notify_size_for_conn(conn);
      if (conn) {
-@@ -130,7 +151,7 @@ static struct bt_gatt_indicate_params rpc_indicate_params = {
+@@ -130,7 +153,7 @@ static struct bt_gatt_indicate_params rpc_indicate_params = {
  };
 
  static void notif_rpc_tx_cb(struct k_work *work) {
@@ -178,7 +197,7 @@ index f0ab315..6f2b809 100644
      struct ring_buf *tx_buf = zmk_rpc_get_tx_buf();
 
      if (!conn) {
-@@ -206,7 +227,7 @@ static int gatt_rpc_listener(const zmk_event_t *eh) {
+@@ -206,7 +229,7 @@ static int gatt_rpc_listener(const zmk_event_t *eh) {
      refresh_notify_size();
 
  #if IS_ENABLED(CONFIG_ZMK_STUDIO_LOCK_ON_DISCONNECT)
@@ -187,7 +206,7 @@ index f0ab315..6f2b809 100644
 
      if (!conn) {
          zmk_studio_core_lock();
-@@ -220,3 +241,24 @@ static int gatt_rpc_listener(const zmk_event_t *eh) {
+@@ -220,3 +243,24 @@ static int gatt_rpc_listener(const zmk_event_t *eh) {
 
  ZMK_LISTENER(gatt_rpc_listener, gatt_rpc_listener);
  ZMK_SUBSCRIPTION(gatt_rpc_listener, zmk_ble_active_profile_changed);
@@ -212,3 +231,47 @@ index f0ab315..6f2b809 100644
 +}
 +
 +SYS_INIT(gatt_rpc_transport_init, APPLICATION, CONFIG_APPLICATION_INIT_PRIORITY);
+diff --git a/app/src/studio/rpc.c b/app/src/studio/rpc.c
+index 7b8dd60..6df6f24 100644
+--- a/app/src/studio/rpc.c
++++ b/app/src/studio/rpc.c
+@@ -242,13 +242,9 @@ static void rpc_main(void) {
+ K_THREAD_DEFINE(studio_rpc_thread, CONFIG_ZMK_STUDIO_RPC_THREAD_STACK_SIZE, rpc_main, NULL, NULL,
+                 NULL, K_LOWEST_APPLICATION_THREAD_PRIO, 0, 0);
+
+-static void refresh_selected_transport(void) {
+-    enum zmk_transport transport = zmk_endpoints_selected().transport;
+-
+-    k_mutex_lock(&rpc_transport_mutex, K_FOREVER);
+-
++static int select_transport_locked(enum zmk_transport transport) {
+     if (selected_transport && selected_transport->transport == transport) {
+-        goto exit_refresh;
++        return 0;
+     }
+
+     if (selected_transport) {
+@@ -273,10 +269,22 @@ static void refresh_selected_transport(void) {
+
+     if (!selected_transport) {
+         LOG_WRN("Failed to select a transport!");
++        return -ENODEV;
+     }
+
+-exit_refresh:
++    return 0;
++}
++
++int zmk_rpc_select_transport(enum zmk_transport transport) {
++    k_mutex_lock(&rpc_transport_mutex, K_FOREVER);
++    int ret = select_transport_locked(transport);
+     k_mutex_unlock(&rpc_transport_mutex);
++
++    return ret;
++}
++
++static void refresh_selected_transport(void) {
++    zmk_rpc_select_transport(zmk_endpoints_selected().transport);
+ }
+
+ static int zmk_rpc_init(void) {
