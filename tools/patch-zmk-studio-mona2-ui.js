@@ -64,6 +64,28 @@ connectModalSource = connectModalSource.replace(
 
 fs.writeFileSync(connectModalPath, connectModalSource);
 
+const gattTransportPath = path.join(
+  studioDir,
+  "node_modules/@zmkfirmware/zmk-studio-ts-client/lib/transport/gatt.js"
+);
+let gattTransportSource = fs.readFileSync(gattTransportPath, "utf8");
+
+gattTransportSource = gattTransportSource.replace(
+  `    let dev = await navigator.bluetooth.requestDevice({
+        filters: [{ services: [SERVICE_UUID] }],
+        optionalServices: [SERVICE_UUID],
+    }).catch((e) => {`,
+  `    let dev = await navigator.bluetooth.requestDevice({
+        filters: [
+            { services: [SERVICE_UUID] },
+            { namePrefix: 'moNa2' },
+        ],
+        optionalServices: [SERVICE_UUID],
+    }).catch((e) => {`
+);
+
+fs.writeFileSync(gattTransportPath, gattTransportSource);
+
 const hidUsagesPath = path.join(studioDir, "src/hid-usages.ts");
 let hidUsagesSource = fs.readFileSync(hidUsagesPath, "utf8");
 
