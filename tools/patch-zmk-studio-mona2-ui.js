@@ -84,6 +84,22 @@ gattTransportSource = gattTransportSource.replace(
     }).catch((e) => {`
 );
 
+gattTransportSource = gattTransportSource.replace(
+  `    let char = await svc.getCharacteristic(RPC_CHRC_UUID);
+    let readable = new ReadableStream({
+        async start(controller) {
+            // Reconnect to the same device will lose notifications if we don't first force a stop before starting again.
+            await char.stopNotifications();
+            await char.startNotifications();`,
+  `    let char = await svc.getCharacteristic(RPC_CHRC_UUID);
+    // Reconnect to the same device will lose notifications if we don't first force a stop before starting again.
+    // Wait for the CCC write to complete before any RPC bytes are written, otherwise the first response can be dropped.
+    await char.stopNotifications();
+    await char.startNotifications();
+    let readable = new ReadableStream({
+        async start(controller) {`
+);
+
 fs.writeFileSync(gattTransportPath, gattTransportSource);
 
 const hidUsagesPath = path.join(studioDir, "src/hid-usages.ts");
