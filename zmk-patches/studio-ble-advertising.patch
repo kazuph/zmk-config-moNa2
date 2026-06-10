@@ -1,0 +1,53 @@
+diff --git a/app/src/ble.c b/app/src/ble.c
+index 7176bd0..6fb5dd1 100644
+--- a/app/src/ble.c
++++ b/app/src/ble.c
+@@ -37,6 +37,10 @@ LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
+ #include <zmk/event_manager.h>
+ #include <zmk/events/ble_active_profile_changed.h>
+ 
++#if IS_ENABLED(CONFIG_ZMK_STUDIO_TRANSPORT_BLE)
++#include "studio/uuid.h"
++#endif
++
+ #if IS_ENABLED(CONFIG_ZMK_BLE_PASSKEY_ENTRY)
+ #include <zmk/events/keycode_state_changed.h>
+ 
+@@ -78,6 +82,16 @@ static struct bt_data zmk_ble_ad[] = {
+                   ),
+ };
+ 
++#if IS_ENABLED(CONFIG_ZMK_STUDIO_TRANSPORT_BLE)
++static const struct bt_data zmk_ble_studio_sd[] = {
++    BT_DATA_BYTES(BT_DATA_UUID128_SOME, ZMK_STUDIO_BT_SERVICE_UUID),
++};
++
++#define ZMK_BLE_STUDIO_SD_ARGS zmk_ble_studio_sd, ARRAY_SIZE(zmk_ble_studio_sd)
++#else
++#define ZMK_BLE_STUDIO_SD_ARGS NULL, 0
++#endif
++
+ #if IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL)
+ 
+ static bt_addr_le_t peripheral_addrs[ZMK_SPLIT_BLE_PERIPHERAL_COUNT];
+@@ -156,7 +170,8 @@ bool zmk_ble_active_profile_is_connected(void) {
+     advertising_status = ZMK_ADV_DIR;
+ 
+ #define CHECKED_OPEN_ADV()                                                                         \
+-    err = bt_le_adv_start(ZMK_ADV_CONN_NAME, zmk_ble_ad, ARRAY_SIZE(zmk_ble_ad), NULL, 0);         \
++    err = bt_le_adv_start(ZMK_ADV_CONN_NAME, zmk_ble_ad, ARRAY_SIZE(zmk_ble_ad),                  \
++                          ZMK_BLE_STUDIO_SD_ARGS);                                                \
+     if (err) {                                                                                     \
+         LOG_ERR("Advertising failed to start (err %d)", err);                                      \
+         return err;                                                                                \
+@@ -169,7 +184,9 @@ int update_advertising(void) {
+     struct bt_conn *conn;
+     enum advertising_type desired_adv = ZMK_ADV_NONE;
+ 
+-    if (zmk_ble_active_profile_is_open()) {
++    if (IS_ENABLED(CONFIG_ZMK_STUDIO_TRANSPORT_BLE)) {
++        desired_adv = ZMK_ADV_CONN;
++    } else if (zmk_ble_active_profile_is_open()) {
+         desired_adv = ZMK_ADV_CONN;
+     } else if (!zmk_ble_active_profile_is_connected()) {
+         desired_adv = ZMK_ADV_CONN;

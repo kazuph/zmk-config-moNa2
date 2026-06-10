@@ -72,14 +72,14 @@ let gattTransportSource = fs.readFileSync(gattTransportPath, "utf8");
 
 gattTransportSource = gattTransportSource.replace(
   `    let dev = await navigator.bluetooth.requestDevice({
-        filters: [{ services: [SERVICE_UUID] }],
-        optionalServices: [SERVICE_UUID],
-    }).catch((e) => {`,
-  `    let dev = await navigator.bluetooth.requestDevice({
         filters: [
             { services: [SERVICE_UUID] },
             { namePrefix: 'moNa2' },
         ],
+        optionalServices: [SERVICE_UUID],
+    }).catch((e) => {`,
+  `    let dev = await navigator.bluetooth.requestDevice({
+        filters: [{ services: [SERVICE_UUID] }],
         optionalServices: [SERVICE_UUID],
     }).catch((e) => {`
 );

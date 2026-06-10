@@ -103,6 +103,7 @@ jobs:
           git -C zmk reset --hard
           git -C zmk clean -fd
           git -C zmk apply "${GITHUB_WORKSPACE}/zmk-patches/apple-fn-behavior.patch"
+          git -C zmk apply "${GITHUB_WORKSPACE}/zmk-patches/studio-ble-advertising.patch"
 
       - name: West Zephyr export
         working-directory: ${{ env.base_dir }}
