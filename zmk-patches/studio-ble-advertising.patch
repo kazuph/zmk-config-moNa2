@@ -5,18 +5,18 @@ index 7176bd0..6fb5dd1 100644
 @@ -37,6 +37,10 @@ LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
  #include <zmk/event_manager.h>
  #include <zmk/events/ble_active_profile_changed.h>
- 
+
 +#if IS_ENABLED(CONFIG_ZMK_STUDIO_TRANSPORT_BLE)
 +#include "studio/uuid.h"
 +#endif
 +
  #if IS_ENABLED(CONFIG_ZMK_BLE_PASSKEY_ENTRY)
  #include <zmk/events/keycode_state_changed.h>
- 
+
 @@ -78,6 +82,16 @@ static struct bt_data zmk_ble_ad[] = {
                    ),
  };
- 
+
 +#if IS_ENABLED(CONFIG_ZMK_STUDIO_TRANSPORT_BLE)
 +static const struct bt_data zmk_ble_studio_sd[] = {
 +    BT_DATA_BYTES(BT_DATA_UUID128_SOME, ZMK_STUDIO_BT_SERVICE_UUID),
@@ -28,11 +28,11 @@ index 7176bd0..6fb5dd1 100644
 +#endif
 +
  #if IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL)
- 
+
  static bt_addr_le_t peripheral_addrs[ZMK_SPLIT_BLE_PERIPHERAL_COUNT];
 @@ -156,7 +170,8 @@ bool zmk_ble_active_profile_is_connected(void) {
      advertising_status = ZMK_ADV_DIR;
- 
+
  #define CHECKED_OPEN_ADV()                                                                         \
 -    err = bt_le_adv_start(ZMK_ADV_CONN_NAME, zmk_ble_ad, ARRAY_SIZE(zmk_ble_ad), NULL, 0);         \
 +    err = bt_le_adv_start(ZMK_ADV_CONN_NAME, zmk_ble_ad, ARRAY_SIZE(zmk_ble_ad),                  \
@@ -43,7 +43,7 @@ index 7176bd0..6fb5dd1 100644
 @@ -169,7 +184,9 @@ int update_advertising(void) {
      struct bt_conn *conn;
      enum advertising_type desired_adv = ZMK_ADV_NONE;
- 
+
 -    if (zmk_ble_active_profile_is_open()) {
 +    if (IS_ENABLED(CONFIG_ZMK_STUDIO_TRANSPORT_BLE)) {
 +        desired_adv = ZMK_ADV_CONN;
@@ -51,3 +51,123 @@ index 7176bd0..6fb5dd1 100644
          desired_adv = ZMK_ADV_CONN;
      } else if (!zmk_ble_active_profile_is_connected()) {
          desired_adv = ZMK_ADV_CONN;
+diff --git a/app/src/studio/gatt_rpc_transport.c b/app/src/studio/gatt_rpc_transport.c
+index f0ab315..6f2b809 100644
+--- a/app/src/studio/gatt_rpc_transport.c
++++ b/app/src/studio/gatt_rpc_transport.c
+@@ -9,6 +9,7 @@
+ #include <sys/types.h>
+ #include <zephyr/sys/atomic.h>
+ #include <zephyr/kernel.h>
++#include <zephyr/bluetooth/conn.h>
+ #include <zephyr/bluetooth/gatt.h>
+ #include <zephyr/sys/ring_buffer.h>
+
+@@ -26,6 +27,17 @@ LOG_MODULE_DECLARE(zmk_studio, CONFIG_ZMK_STUDIO_LOG_LEVEL);
+ static bool handling_rx = false;
+
+ static atomic_t notify_size;
++static struct bt_conn *studio_conn;
++
++static uint16_t get_notify_size_for_conn(struct bt_conn *conn);
++
++static struct bt_conn *studio_active_conn(void) {
++    if (studio_conn) {
++        return bt_conn_ref(studio_conn);
++    }
++
++    return zmk_ble_active_profile_conn();
++}
+
+ static void rpc_ccc_cfg_changed(const struct bt_gatt_attr *attr, uint16_t value) {
+     ARG_UNUSED(attr);
+@@ -35,7 +47,7 @@ static void rpc_ccc_cfg_changed(const struct bt_gatt_attr *attr, uint16_t value)
+     LOG_INF("RPC Notifications %s", notif_enabled ? "enabled" : "disabled");
+
+ #if CONFIG_ZMK_STUDIO_TRANSPORT_BLE_PREF_LATENCY < CONFIG_BT_PERIPHERAL_PREF_LATENCY
+-    struct bt_conn *conn = zmk_ble_active_profile_conn();
++    struct bt_conn *conn = studio_active_conn();
+     if (conn) {
+         uint8_t latency = notif_enabled ? CONFIG_ZMK_STUDIO_TRANSPORT_BLE_PREF_LATENCY
+                                         : CONFIG_BT_PERIPHERAL_PREF_LATENCY;
+@@ -66,6 +78,15 @@ static ssize_t write_rpc_req(struct bt_conn *conn, const struct bt_gatt_attr *at
+         return len;
+     }
+
++    if (studio_conn != conn) {
++        if (studio_conn) {
++            bt_conn_unref(studio_conn);
++        }
++
++        studio_conn = bt_conn_ref(conn);
++        atomic_set(&notify_size, get_notify_size_for_conn(studio_conn));
++    }
++
+     uint32_t copied = 0;
+     struct ring_buf *rpc_buf = zmk_rpc_get_rx_buf();
+     while (copied < len) {
+@@ -89,9 +110,9 @@ BT_GATT_SERVICE_DEFINE(
+     rpc_interface, BT_GATT_PRIMARY_SERVICE(BT_UUID_DECLARE_128(ZMK_STUDIO_BT_SERVICE_UUID)),
+     BT_GATT_CHARACTERISTIC(BT_UUID_DECLARE_128(ZMK_STUDIO_BT_RPC_CHRC_UUID),
+                            BT_GATT_CHRC_WRITE | BT_GATT_CHRC_READ | BT_GATT_CHRC_INDICATE,
+-                           BT_GATT_PERM_READ_ENCRYPT | BT_GATT_PERM_WRITE_ENCRYPT, read_rpc_resp,
+-                           write_rpc_req, NULL),
+-    BT_GATT_CCC(rpc_ccc_cfg_changed, BT_GATT_PERM_READ_ENCRYPT | BT_GATT_PERM_WRITE_ENCRYPT));
++                           BT_GATT_PERM_READ | BT_GATT_PERM_WRITE, read_rpc_resp, write_rpc_req,
++                           NULL),
++    BT_GATT_CCC(rpc_ccc_cfg_changed, BT_GATT_PERM_READ | BT_GATT_PERM_WRITE));
+
+ static uint16_t get_notify_size_for_conn(struct bt_conn *conn) {
+     uint16_t notify_size = 23; // Default MTU size unless negotiated higher
+@@ -104,7 +125,7 @@ static uint16_t get_notify_size_for_conn(struct bt_conn *conn) {
+ }
+
+ static void refresh_notify_size(void) {
+-    struct bt_conn *conn = zmk_ble_active_profile_conn();
++    struct bt_conn *conn = studio_active_conn();
+
+     uint16_t ns = get_notify_size_for_conn(conn);
+     if (conn) {
+@@ -130,7 +151,7 @@ static struct bt_gatt_indicate_params rpc_indicate_params = {
+ };
+
+ static void notif_rpc_tx_cb(struct k_work *work) {
+-    struct bt_conn *conn = zmk_ble_active_profile_conn();
++    struct bt_conn *conn = studio_active_conn();
+     struct ring_buf *tx_buf = zmk_rpc_get_tx_buf();
+
+     if (!conn) {
+@@ -206,7 +227,7 @@ static int gatt_rpc_listener(const zmk_event_t *eh) {
+     refresh_notify_size();
+
+ #if IS_ENABLED(CONFIG_ZMK_STUDIO_LOCK_ON_DISCONNECT)
+-    struct bt_conn *conn = zmk_ble_active_profile_conn();
++    struct bt_conn *conn = studio_active_conn();
+
+     if (!conn) {
+         zmk_studio_core_lock();
+@@ -220,3 +241,24 @@ static int gatt_rpc_listener(const zmk_event_t *eh) {
+
+ ZMK_LISTENER(gatt_rpc_listener, gatt_rpc_listener);
+ ZMK_SUBSCRIPTION(gatt_rpc_listener, zmk_ble_active_profile_changed);
++
++static void disconnected(struct bt_conn *conn, uint8_t reason) {
++    if (studio_conn != conn) {
++        return;
++    }
++
++    bt_conn_unref(studio_conn);
++    studio_conn = NULL;
++    refresh_notify_size();
++}
++
++static struct bt_conn_cb conn_callbacks = {
++    .disconnected = disconnected,
++};
++
++static int gatt_rpc_transport_init(void) {
++    bt_conn_cb_register(&conn_callbacks);
++    return 0;
++}
++
++SYS_INIT(gatt_rpc_transport_init, APPLICATION, CONFIG_APPLICATION_INIT_PRIORITY);
