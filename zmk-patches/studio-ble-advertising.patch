@@ -1,5 +1,5 @@
 diff --git a/app/src/ble.c b/app/src/ble.c
-index 7176bd0..6fb5dd1 100644
+index 7176bd0..c0ed144 100644
 --- a/app/src/ble.c
 +++ b/app/src/ble.c
 @@ -37,6 +37,10 @@ LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
@@ -51,6 +51,47 @@ index 7176bd0..6fb5dd1 100644
          desired_adv = ZMK_ADV_CONN;
      } else if (!zmk_ble_active_profile_is_connected()) {
          desired_adv = ZMK_ADV_CONN;
+@@ -610,13 +627,26 @@ static bool pairing_allowed_for_current_profile(struct bt_conn *conn) {
+             bt_addr_le_cmp(zmk_ble_active_profile_addr(), bt_conn_get_dst(conn)) == 0);
+ }
+
++static bool studio_pairing_allowed_without_profile_takeover(struct bt_conn *conn) {
++    struct bt_conn_info info;
++
++    if (!IS_ENABLED(CONFIG_ZMK_STUDIO_TRANSPORT_BLE)) {
++        return false;
++    }
++
++    bt_conn_get_info(conn, &info);
++
++    return info.role == BT_CONN_ROLE_PERIPHERAL && zmk_ble_active_profile_is_connected();
++}
++
+ static enum bt_security_err auth_pairing_accept(struct bt_conn *conn,
+                                                 const struct bt_conn_pairing_feat *const feat) {
+     struct bt_conn_info info;
+     bt_conn_get_info(conn, &info);
+
+     LOG_DBG("role %d, open? %s", info.role, zmk_ble_active_profile_is_open() ? "yes" : "no");
+-    if (info.role == BT_CONN_ROLE_PERIPHERAL && !pairing_allowed_for_current_profile(conn)) {
++    if (info.role == BT_CONN_ROLE_PERIPHERAL && !pairing_allowed_for_current_profile(conn) &&
++        !studio_pairing_allowed_without_profile_takeover(conn)) {
+         LOG_WRN("Rejecting pairing request to taken profile %d", active_profile);
+         return BT_SECURITY_ERR_PAIR_NOT_ALLOWED;
+     }
+@@ -638,6 +668,12 @@ static void auth_pairing_complete(struct bt_conn *conn, bool bonded) {
+     }
+
+     if (!pairing_allowed_for_current_profile(conn)) {
++        if (studio_pairing_allowed_without_profile_takeover(conn)) {
++            LOG_DBG("Pairing completed for Studio connection without taking active profile: %s",
++                    addr);
++            return;
++        }
++
+         LOG_ERR("Pairing completed but current profile is not open: %s", addr);
+         bt_unpair(BT_ID_DEFAULT, dst);
+         return;
 diff --git a/app/src/studio/gatt_rpc_transport.c b/app/src/studio/gatt_rpc_transport.c
 index f0ab315..6f2b809 100644
 --- a/app/src/studio/gatt_rpc_transport.c
