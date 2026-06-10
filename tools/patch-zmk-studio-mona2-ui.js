@@ -36,6 +36,34 @@ mergeNestedJson(
   path.join(repoRoot, "tools/zmk-studio-mona2-hid-overrides.json")
 );
 
+const appPath = path.join(studioDir, "src/App.tsx");
+let appSource = fs.readFileSync(appPath, "utf8");
+
+appSource = appSource.replace(
+  `  ...(navigator.bluetooth && navigator.userAgent.indexOf("Linux") >= 0
+    ? [{ label: "BLE", connect: gatt_connect }]
+    : []),`,
+  `  ...(navigator.bluetooth
+    ? [{ label: "BLE", connect: gatt_connect }]
+    : []),`
+);
+
+fs.writeFileSync(appPath, appSource);
+
+const connectModalPath = path.join(studioDir, "src/ConnectModal.tsx");
+let connectModalSource = fs.readFileSync(connectModalPath, "utf8");
+
+connectModalSource = connectModalSource.replace(
+  `          Web Bluetooth
+        </ExternalLink>{" "}
+        (Linux only) to connect to ZMK devices.`,
+  `          Web Bluetooth
+        </ExternalLink>{" "}
+        to connect to ZMK devices.`
+);
+
+fs.writeFileSync(connectModalPath, connectModalSource);
+
 const hidUsagesPath = path.join(studioDir, "src/hid-usages.ts");
 let hidUsagesSource = fs.readFileSync(hidUsagesPath, "utf8");
 
