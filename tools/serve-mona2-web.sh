@@ -44,7 +44,13 @@ else
         src/keyboard/behavior-short-names.json \
         src/hid-usage-name-overrides.json \
         src/keyboard/Key.tsx \
-        src/keyboard/Keymap.tsx
+        src/keyboard/Keymap.tsx \
+        src/behaviors/HidUsagePicker.tsx \
+        src/behaviors/BehaviorBindingPicker.tsx \
+        src/behaviors/ParameterValuePicker.tsx \
+        src/App.tsx \
+        src/ConnectModal.tsx \
+        src/hid-usages.ts
     "$GIT_BIN" -C "$STUDIO_DIR" pull --ff-only
 fi
 

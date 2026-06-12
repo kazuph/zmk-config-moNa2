@@ -100,6 +100,70 @@ gattTransportSource = gattTransportSource.replace(
         async start(controller) {`
 );
 
+// Rebuild the notification ReadableStream wholesale:
+// - Copy the exact notified byte range (Chrome may reuse/over-allocate the event buffer).
+// - Detach listeners when the stream is cancelled or closed, so stale listeners from a
+//   previous connect attempt don't throw "enqueue on closed stream" on every notification.
+const gattReadableFixed = `    let streamClosed = false;
+    let detachStream = () => {};
+    let readable = new ReadableStream({
+        async start(controller) {
+            const dbg = typeof mona2BleDebug === 'function'
+                ? mona2BleDebug
+                : (stage, data) => console.info('[moNa2 BLE]', stage, data);
+            let vc = (ev) => {
+                if (streamClosed) {
+                    return;
+                }
+                const view = ev.target?.value;
+                if (!view) {
+                    return;
+                }
+                const bytes = new Uint8Array(view.buffer.slice(view.byteOffset, view.byteOffset + view.byteLength));
+                dbg('notification:bytes', {
+                    byteLength: bytes.byteLength,
+                    byteOffset: view.byteOffset,
+                    bufferTotal: view.buffer.byteLength,
+                });
+                try {
+                    controller.enqueue(bytes);
+                } catch (e) {
+                    dbg('notification:enqueue-after-close', { message: String(e) });
+                    detachStream();
+                }
+            };
+            let cb = async () => {
+                detachStream();
+                try {
+                    controller.close();
+                } catch {
+                    // already closed or cancelled
+                }
+            };
+            detachStream = () => {
+                streamClosed = true;
+                char.removeEventListener('characteristicvaluechanged', vc);
+                dev.removeEventListener('gattserverdisconnected', cb);
+            };
+            char.addEventListener('characteristicvaluechanged', vc);
+            dev.addEventListener('gattserverdisconnected', cb);
+        },
+        cancel() {
+            detachStream();
+        },
+    });`;
+
+if (!gattTransportSource.includes("detachStream")) {
+  gattTransportSource = gattTransportSource.replace(
+    /    let readable = new ReadableStream\(\{[\s\S]*?\n    \}\);/,
+    gattReadableFixed
+  );
+}
+
+if (!gattTransportSource.includes("detachStream")) {
+  throw new Error("Failed to patch gatt.js notification stream lifecycle");
+}
+
 fs.writeFileSync(gattTransportPath, gattTransportSource);
 
 const hidUsagesPath = path.join(studioDir, "src/hid-usages.ts");
@@ -284,334 +348,64 @@ keymapSource = keymapSource.replace(
 );
 
 fs.writeFileSync(keymapPath, keymapSource);
+// Stream the in-page BLE/RPC debug ring buffer to the local server so traces can be
+// inspected from the repo (.artifacts/studio-key-picker-ux/ble-trace.json) without
+// manual copy/paste from DevTools.
+const indexHtmlPath = path.join(studioDir, "index.html");
+let indexHtmlSource = fs.readFileSync(indexHtmlPath, "utf8");
 
-const hidUsagePickerPath = path.join(studioDir, "src/behaviors/HidUsagePicker.tsx");
-fs.writeFileSync(
-  hidUsagePickerPath,
-  `import {
-  Button,
-  Checkbox,
-  CheckboxGroup,
-  Label,
-  Radio,
-  RadioGroup,
-} from "react-aria-components";
-import {
-  hid_usage_from_page_and_id,
-  hid_usage_get_label,
-  hid_usage_page_get_ids,
-} from "../hid-usages";
-import { useCallback, useEffect, useMemo, useState } from "react";
-
-export interface HidUsagePage {
-  id: number;
-  min?: number;
-  max?: number;
+if (!indexHtmlSource.includes("/api/ble-debug")) {
+  indexHtmlSource = indexHtmlSource.replace(
+    "</head>",
+    `  <script>
+      (() => {
+        const seen = new Set();
+        const all = [];
+        let dirty = false;
+        setInterval(() => {
+          const buf = window.__mona2BleDebug || [];
+          for (const e of buf) {
+            const k = e.t + "|" + e.stage + "|" + JSON.stringify(e.data || {});
+            if (!seen.has(k)) {
+              seen.add(k);
+              all.push(e);
+              dirty = true;
+            }
+          }
+        }, 200);
+        setInterval(() => {
+          if (!dirty) return;
+          dirty = false;
+          fetch("/api/ble-debug", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              updatedAt: new Date().toISOString(),
+              userAgent: navigator.userAgent,
+              count: all.length,
+              events: all.slice(-600),
+            }),
+          }).catch(() => {});
+        }, 1000);
+      })();
+    </script>
+  </head>`
+  );
 }
 
-export interface HidUsagePickerProps {
-  label?: string;
-  value?: number;
-  usagePages: HidUsagePage[];
-  onValueChanged: (value?: number) => void;
-}
+fs.writeFileSync(indexHtmlPath, indexHtmlSource);
 
-interface UsageChoice {
-  pageId: number;
-  id: number;
-  value: number;
-  label: string;
-}
-
-const sectionLabel = (pageId: number) => {
-  if (pageId === 7) return "Keyboard";
-  if (pageId === 12) return "Consumer";
-  return hid_usage_page_get_ids(pageId)?.Name || \`Page \${pageId}\`;
-};
-
-const usageChoices = ({ id, min, max }: HidUsagePage): UsageChoice[] => {
-  const info = hid_usage_page_get_ids(id);
-  let usages = info?.UsageIds || [];
-
-  if (max || min) {
-    usages = usages.filter(
-      (i) =>
-        (i.Id <= (max || Number.MAX_SAFE_INTEGER) && i.Id >= (min || 0)) ||
-        (id === 7 && i.Id >= 0xe0 && i.Id <= 0xe7)
-    );
-  }
-
-  return usages.map((i) => {
-    const value = hid_usage_from_page_and_id(id, i.Id);
-    return {
-      pageId: id,
-      id: i.Id,
-      value,
-      label: hid_usage_get_label(id, i.Id) || i.Name,
-    };
-  });
-};
-
-const keyboardGroup = (id: number) => {
-  if (id >= 0x04 && id <= 0x1d) return "Letters";
-  if (id >= 0x1e && id <= 0x27) return "Numbers";
-  if (
-    (id >= 0x2d && id <= 0x38) ||
-    id === 0x64 ||
-    id === 0x87 ||
-    id === 0x89
-  ) {
-    return "Symbols";
-  }
-  if (id >= 0x3a && id <= 0x45) return "Function";
-  if (id >= 0x4a && id <= 0x52) return "Navigation";
-  if (id >= 0xe0 && id <= 0xe7) return "Modifiers";
-  if ([0x28, 0x29, 0x2a, 0x2b, 0x2c, 0x39].includes(id)) return "Control";
-  return "Other";
-};
-
-const consumerGroup = (id: number, label: string) => {
-  if ([0xb0, 0xb1, 0xb3, 0xb4, 0xb5, 0xb6, 0xb7, 0xcd, 0xe2, 0xe9, 0xea].includes(id)) {
-    return "Media";
-  }
-  if (id >= 0x30 && id <= 0x37) return "Power";
-  if (id >= 0x180 && id <= 0x1ff) return "Browser / App";
-  if (label.toLowerCase().includes("keyboard")) return "Keyboard";
-  return "Other";
-};
-
-const usageGroup = (choice: UsageChoice) => {
-  if (choice.pageId === 7) return keyboardGroup(choice.id);
-  if (choice.pageId === 12) return consumerGroup(choice.id, choice.label);
-  return "Other";
-};
-
-const displayChoiceLabel = (choice: UsageChoice) => {
-  if (choice.pageId === 7) {
-    return choice.label.replace(/^Keyboard\\s+/, "");
-  }
-
-  return choice.label;
-};
-
-enum Mods {
-  LeftControl = 0x01,
-  LeftShift = 0x02,
-  LeftAlt = 0x04,
-  LeftGUI = 0x08,
-  RightControl = 0x10,
-  RightShift = 0x20,
-  RightAlt = 0x40,
-  RightGUI = 0x80,
-}
-
-const mod_labels: Record<Mods, string> = {
-  [Mods.LeftControl]: "L ⌃",
-  [Mods.LeftShift]: "L ⇧",
-  [Mods.LeftAlt]: "L ⌥",
-  [Mods.LeftGUI]: "L ⌘",
-  [Mods.RightControl]: "R ⌃",
-  [Mods.RightShift]: "R ⇧",
-  [Mods.RightAlt]: "R ⌥",
-  [Mods.RightGUI]: "R ⌘",
-};
-
-const all_mods = [
-  Mods.LeftControl,
-  Mods.LeftShift,
-  Mods.LeftAlt,
-  Mods.LeftGUI,
-  Mods.RightControl,
-  Mods.RightShift,
-  Mods.RightAlt,
-  Mods.RightGUI,
+const overridesDir = path.join(repoRoot, "tools/zmk-studio-overrides");
+const overrideFiles = [
+  "HidUsagePicker.tsx",
+  "BehaviorBindingPicker.tsx",
+  "ParameterValuePicker.tsx",
+  "Mona2Pickers.stories.tsx",
 ];
 
-function mods_to_flags(mods: Mods[]): number {
-  return mods.reduce((a, v) => a + v, 0);
+for (const file of overrideFiles) {
+  fs.copyFileSync(
+    path.join(overridesDir, file),
+    path.join(studioDir, "src/behaviors", file)
+  );
 }
-
-function mask_mods(value: number) {
-  return value & ~(mods_to_flags(all_mods) << 24);
-}
-
-export const HidUsagePicker = ({
-  label,
-  value,
-  usagePages,
-  onValueChanged,
-}: HidUsagePickerProps) => {
-  const currentUsage = value ? mask_mods(value) : undefined;
-  const choicesByPage = useMemo(
-    () =>
-      usagePages.map((page) => ({
-        page,
-        choices: usageChoices(page),
-      })),
-    [usagePages]
-  );
-  const selectedPageIdFromValue = useMemo(() => {
-    for (const { page, choices } of choicesByPage) {
-      if (choices.some((choice) => choice.value === currentUsage)) return page.id;
-    }
-
-    return choicesByPage[0]?.page.id;
-  }, [choicesByPage, currentUsage]);
-  const [selectedPageId, setSelectedPageId] = useState<number | undefined>(
-    selectedPageIdFromValue
-  );
-  const activePageId = selectedPageId ?? selectedPageIdFromValue;
-  const activeChoices =
-    choicesByPage.find(({ page }) => page.id === activePageId)?.choices || [];
-  const groupNames = useMemo(
-    () => Array.from(new Set(activeChoices.map(usageGroup))),
-    [activeChoices]
-  );
-  const selectedGroupFromValue = useMemo(() => {
-    const found = activeChoices.find((choice) => choice.value === currentUsage);
-    return found ? usageGroup(found) : groupNames[0];
-  }, [activeChoices, currentUsage, groupNames]);
-  const [selectedGroup, setSelectedGroup] = useState<string | undefined>(
-    selectedGroupFromValue
-  );
-  const activeGroup = selectedGroup ?? selectedGroupFromValue;
-  const visibleChoices = activeChoices.filter(
-    (choice) => usageGroup(choice) === activeGroup
-  );
-
-  useEffect(() => {
-    setSelectedGroup(selectedGroupFromValue);
-  }, [selectedGroupFromValue]);
-
-  const selectedLabel = useMemo(() => {
-    for (const { choices } of choicesByPage) {
-      const found = choices.find((choice) => choice.value === currentUsage);
-      if (found) return displayChoiceLabel(found);
-    }
-
-    return currentUsage ? \`0x\${currentUsage.toString(16)}\` : "未選択";
-  }, [choicesByPage, currentUsage]);
-
-  const mods = useMemo(() => {
-    const flags = value ? value >> 24 : 0;
-    return all_mods.filter((m) => m & flags).map((m) => m.toLocaleString());
-  }, [value]);
-
-  const chooseUsage = useCallback(
-    (nextValue: number) => {
-      const modFlags = mods_to_flags(mods.map((m) => parseInt(m)));
-      onValueChanged(nextValue | (modFlags << 24));
-    },
-    [onValueChanged, mods]
-  );
-
-  const modifiersChanged = useCallback(
-    (m: string[]) => {
-      if (!value) {
-        return;
-      }
-
-      const modFlags = mods_to_flags(m.map((m) => parseInt(m)));
-      onValueChanged(mask_mods(value) | (modFlags << 24));
-    },
-    [onValueChanged, value]
-  );
-
-  return (
-    <div className="grid gap-3">
-      <div className="flex flex-wrap items-center gap-2">
-        {label && <Label id="hid-usage-picker">{label}:</Label>}
-        <div className="rounded-md bg-base-300 px-3 py-2 text-base font-medium">
-          {selectedLabel}
-        </div>
-        <CheckboxGroup
-          aria-label="Implicit Modifiers"
-          className="grid grid-flow-col gap-x-px auto-cols-[minmax(min-content,1fr)] content-stretch divide-x rounded-md"
-          value={mods}
-          onChange={modifiersChanged}
-        >
-          {all_mods.map((m) => (
-            <Checkbox
-              key={m}
-              value={m.toLocaleString()}
-              className="text-nowrap cursor-pointer grid px-3 py-2 content-center justify-center rac-selected:bg-primary border-base-100 bg-base-300 hover:bg-base-100 first:rounded-s-md last:rounded-e-md rac-selected:text-primary-content"
-            >
-              {mod_labels[m]}
-            </Checkbox>
-          ))}
-        </CheckboxGroup>
-      </div>
-      <div className="grid gap-3 max-h-[42vh] overflow-auto pr-2">
-        <RadioGroup
-          aria-label="大カテゴリ"
-          value={activePageId?.toString()}
-          onChange={(pageId) => {
-            const nextPageId = parseInt(pageId);
-            setSelectedPageId(nextPageId);
-            const firstChoice =
-              choicesByPage.find((entry) => entry.page.id === nextPageId)
-                ?.choices[0];
-            setSelectedGroup(firstChoice ? usageGroup(firstChoice) : undefined);
-          }}
-          className="grid gap-2"
-        >
-          <h3 className="text-sm font-semibold text-base-content/60">大カテゴリ</h3>
-          <div className="flex flex-wrap gap-1.5">
-            {choicesByPage.map(({ page }) => {
-              return (
-                <Radio
-                  key={page.id}
-                  value={page.id.toString()}
-                  className="min-h-9 rounded-md border border-base-300 bg-base-100 px-4 py-2 text-sm font-semibold transition-colors hover:bg-base-300 rac-selected:border-primary rac-selected:bg-primary rac-selected:text-primary-content"
-                >
-                  {sectionLabel(page.id)}
-                </Radio>
-              );
-            })}
-          </div>
-        </RadioGroup>
-        <RadioGroup
-          aria-label="中カテゴリ"
-          value={activeGroup}
-          onChange={setSelectedGroup}
-          className="grid gap-2"
-        >
-          <h3 className="text-sm font-semibold text-base-content/60">中カテゴリ</h3>
-          <div className="flex flex-wrap gap-1.5">
-            {groupNames.map((group) => {
-              return (
-                <Radio
-                  key={group}
-                  value={group}
-                  className="min-h-9 rounded-md border border-base-300 bg-base-100 px-4 py-2 text-sm font-semibold transition-colors hover:bg-base-300 rac-selected:border-primary rac-selected:bg-primary rac-selected:text-primary-content"
-                >
-                  {group}
-                </Radio>
-              );
-            })}
-          </div>
-        </RadioGroup>
-        <section className="grid gap-2">
-          <h3 className="text-sm font-semibold text-base-content/60">キー</h3>
-          <div className="flex flex-wrap gap-1.5">
-            {visibleChoices.map((choice) => {
-              const selected = choice.value === currentUsage;
-              return (
-                <Button
-                  key={choice.value}
-                  type="button"
-                  onPress={() => chooseUsage(choice.value)}
-                  className={\`min-h-9 rounded-md border px-3 py-1.5 text-sm font-medium transition-colors \${selected ? "border-primary bg-primary text-primary-content" : "border-base-300 bg-base-100 hover:bg-base-300"}\`}
-                >
-                    {displayChoiceLabel(choice)}
-                  </Button>
-              );
-            })}
-          </div>
-        </section>
-      </div>
-    </div>
-  );
-};
-`
-);

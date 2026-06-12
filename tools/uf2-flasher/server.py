@@ -137,6 +137,18 @@ class Handler(SimpleHTTPRequestHandler):
 
         super().do_GET()
 
+    def do_POST(self):
+        if self.path == "/api/ble-debug":
+            length = int(self.headers.get("Content-Length", "0") or 0)
+            body = self.rfile.read(length) if length else b"{}"
+            out = REPO_ROOT / ".artifacts" / "studio-key-picker-ux" / "ble-trace.json"
+            out.parent.mkdir(parents=True, exist_ok=True)
+            out.write_bytes(body)
+            self.send_json({"ok": True})
+            return
+
+        self.send_error(404)
+
     def do_HEAD(self):
         if self.path.startswith("/firmware/"):
             self.send_firmware(include_body=False)
