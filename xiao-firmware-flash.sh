@@ -142,7 +142,7 @@ find_run_for_head() {
 
     "$GH_BIN" run list -R "$REPO" --limit 50 \
         --json status,conclusion,databaseId,headSha,workflowName,displayTitle \
-        --jq ".[] | select(.headSha == \"$expected_sha\") | select(.workflowName == \".github/workflows/build.yml\")" \
+        --jq ".[] | select(.headSha == \"$expected_sha\") | select(.workflowName == \".github/workflows/build.yml\" or .workflowName == \"Build moNa2 firmware\")" \
         | "$JQ_BIN" -s 'sort_by(.databaseId) | reverse | .[0]'
 }
 
@@ -332,11 +332,16 @@ copy_firmware() {
 
     log_step "$description を書き込みます: $(basename "$src_file")"
 
-    if "$CP_BIN" "$src_file" "$MOUNT_POINT/" 2>/tmp/mona2-uf2-copy.err; then
+    # -X: UF2 bootloader はデータ書き込み完了後すぐ reboot するため、拡張属性の
+    # コピーは "Device not configured" で失敗する。属性コピー自体を行わない。
+    if "$CP_BIN" -X "$src_file" "$MOUNT_POINT/" 2>/tmp/mona2-uf2-copy.err; then
         wait_for_unmount
         log_success "$description 完了"
         return 0
     fi
+
+    # reboot による unmount がファイルシステムに反映されるまで少し待つ
+    sleep 2
 
     if [[ ! -d "$MOUNT_POINT" ]]; then
         log_warn "copy は非ゼロ終了でしたが、UF2 bootloader が自動 unmount しました。正常系として扱います。"
