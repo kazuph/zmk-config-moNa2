@@ -48,6 +48,12 @@ appSource = appSource.replace(
     : []),`
 );
 
+appSource = appSource.replace(
+  `    // TODO: Show a proper toast/alert not using \`window.alert\`
+    window.alert("Failed to connect to the chosen device");`,
+  `    (window as any).mona2ShowError?.("Failed to connect to the chosen device");`
+);
+
 fs.writeFileSync(appPath, appSource);
 
 const connectModalPath = path.join(studioDir, "src/ConnectModal.tsx");
@@ -61,6 +67,18 @@ connectModalSource = connectModalSource.replace(
         </ExternalLink>{" "}
         to connect to ZMK devices.`
 );
+
+connectModalSource = connectModalSource
+  .replace(
+    `.catch((e) => alert(e));`,
+    `.catch((e) =>
+            (window as any).mona2ShowError?.(e instanceof Error ? e.message : String(e))
+          );`
+  )
+  .replace(
+    `alert(e.message);`,
+    `(window as any).mona2ShowError?.(e.message);`
+  );
 
 fs.writeFileSync(connectModalPath, connectModalSource);
 
@@ -353,6 +371,43 @@ fs.writeFileSync(keymapPath, keymapSource);
 // manual copy/paste from DevTools.
 const indexHtmlPath = path.join(studioDir, "index.html");
 let indexHtmlSource = fs.readFileSync(indexHtmlPath, "utf8");
+
+if (!indexHtmlSource.includes("mona2ShowError")) {
+  indexHtmlSource = indexHtmlSource.replace(
+    "</head>",
+    `  <script>
+      (() => {
+        window.mona2ShowError = (message) => {
+          const text = typeof message === "string" ? message : String(message);
+          console.error("[moNa2 Studio]", text);
+          let panel = document.getElementById("mona2-error-panel");
+          if (!panel) {
+            panel = document.createElement("div");
+            panel.id = "mona2-error-panel";
+            panel.setAttribute("role", "alert");
+            panel.style.cssText = [
+              "position:fixed",
+              "top:56px",
+              "right:16px",
+              "z-index:2147483647",
+              "max-width:420px",
+              "padding:12px 14px",
+              "border-radius:6px",
+              "background:#991b1b",
+              "color:white",
+              "font:14px/1.4 system-ui,-apple-system,BlinkMacSystemFont,sans-serif",
+              "box-shadow:0 12px 32px rgba(0,0,0,.22)",
+              "white-space:pre-wrap",
+            ].join(";");
+            document.body.appendChild(panel);
+          }
+          panel.textContent = text;
+        };
+      })();
+    </script>
+  </head>`
+  );
+}
 
 if (!indexHtmlSource.includes("/api/ble-debug")) {
   indexHtmlSource = indexHtmlSource.replace(

@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <title>moNa2 Current Keymap</title>
+  <style>
+    @page {
+      size: A4 landscape;
+      margin: 10mm;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      color: #172033;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: white;
+    }
+
+    h1 {
+      margin: 0 0 4mm;
+      font-size: 22px;
+      font-weight: 700;
+    }
+
+    .meta {
+      margin-bottom: 5mm;
+      font-size: 10px;
+      color: #52606d;
+    }
+
+    .layers {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6mm;
+    }
+
+    .layer {
+      break-inside: avoid;
+    }
+
+    h2 {
+      margin: 0 0 2mm;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .board {
+      display: grid;
+      grid-template-columns: repeat(13, 1fr);
+      grid-template-rows: repeat(4, 12mm);
+      gap: 1.5mm;
+      padding: 3mm;
+      border: 1px solid #c7d0da;
+      border-radius: 4px;
+      background: #f5f7fa;
+    }
+
+    .key {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 0;
+      padding: 1mm;
+      border: 1px solid #d6dde6;
+      border-radius: 3px;
+      background: #ffffff;
+      font-size: 7.5px;
+      line-height: 1.15;
+      text-align: center;
+      white-space: pre-line;
+      overflow-wrap: anywhere;
+    }
+
+    .held {
+      border-color: #7c3aed;
+      background: #f1e8ff;
+      color: #3f1b85;
+      font-weight: 700;
+    }
+
+    .unlock {
+      border-color: #dc2626;
+      background: #fee2e2;
+      color: #7f1d1d;
+      font-weight: 800;
+    }
+
+    .trans {
+      color: #94a3b8;
+      background: #eef2f7;
+    }
+
+    .note {
+      margin-top: 4mm;
+      padding: 3mm;
+      border-left: 3px solid #dc2626;
+      background: #fff1f2;
+      font-size: 11px;
+      line-height: 1.45;
+    }
+  </style>
+</head>
+<body>
+  <h1>moNa2 Current Keymap</h1>
+  <div class="meta">Source: config/moNa2.keymap. Generated for Studio Unlock position check.</div>
+
+  <div class="layers">
+    <section class="layer">
+      <h2>Layer 0: default_layer</h2>
+      <div class="board">
+        <div class="key" style="grid-column:1;grid-row:1">Q</div>
+        <div class="key" style="grid-column:2;grid-row:1">W</div>
+        <div class="key" style="grid-column:3;grid-row:1">E</div>
+        <div class="key" style="grid-column:4;grid-row:1">R</div>
+        <div class="key" style="grid-column:5;grid-row:1">T</div>
+        <div class="key" style="grid-column:9;grid-row:1">Y</div>
+        <div class="key" style="grid-column:10;grid-row:1">U</div>
+        <div class="key" style="grid-column:11;grid-row:1">I</div>
+        <div class="key" style="grid-column:12;grid-row:1">O</div>
+        <div class="key" style="grid-column:13;grid-row:1">P</div>
+
+        <div class="key held" style="grid-column:1;grid-row:2">tap A
+hold LCTRL</div>
+        <div class="key" style="grid-column:2;grid-row:2">S</div>
+        <div class="key" style="grid-column:3;grid-row:2">D</div>
+        <div class="key" style="grid-column:4;grid-row:2">F</div>
+        <div class="key" style="grid-column:5;grid-row:2">G</div>
+        <div class="key" style="grid-column:8;grid-row:2">LALT</div>
+        <div class="key" style="grid-column:9;grid-row:2">H</div>
+        <div class="key" style="grid-column:10;grid-row:2">J</div>
+        <div class="key" style="grid-column:11;grid-row:2">K</div>
+        <div class="key" style="grid-column:12;grid-row:2">L</div>
+        <div class="key" style="grid-column:13;grid-row:2">ENTER</div>
+
+        <div class="key held" style="grid-column:1;grid-row:3">tap Z
+hold LSHIFT</div>
+        <div class="key" style="grid-column:2;grid-row:3">X</div>
+        <div class="key" style="grid-column:3;grid-row:3">C</div>
+        <div class="key" style="grid-column:4;grid-row:3">V</div>
+        <div class="key" style="grid-column:5;grid-row:3">B</div>
+        <div class="key" style="grid-column:6;grid-row:3">CMD
+SHIFT
+CTRL</div>
+        <div class="key" style="grid-column:8;grid-row:3">ESC</div>
+        <div class="key" style="grid-column:9;grid-row:3">N</div>
+        <div class="key" style="grid-column:10;grid-row:3">M</div>
+        <div class="key" style="grid-column:11;grid-row:3">MB1</div>
+        <div class="key" style="grid-column:12;grid-row:3">MO 2</div>
+        <div class="key" style="grid-column:13;grid-row:3">JP -</div>
+
+        <div class="key" style="grid-column:1;grid-row:4">LSHIFT</div>
+        <div class="key" style="grid-column:2;grid-row:4">RCTRL</div>
+        <div class="key" style="grid-column:3;grid-row:4">LCMD</div>
+        <div class="key" style="grid-column:4;grid-row:4">MO 1</div>
+        <div class="key" style="grid-column:5;grid-row:4">SPACE</div>
+        <div class="key" style="grid-column:6;grid-row:4">F13</div>
+        <div class="key" style="grid-column:8;grid-row:4">LANG2</div>
+        <div class="key" style="grid-column:9;grid-row:4">LANG1</div>
+        <div class="key" style="grid-column:13;grid-row:4">JP quote</div>
+      </div>
+    </section>
+
+    <section class="layer">
+      <h2>Layer 1</h2>
+      <div class="board">
+        <div class="key" style="grid-column:1;grid-row:1">TAB</div>
+        <div class="key" style="grid-column:2;grid-row:1">"</div>
+        <div class="key" style="grid-column:3;grid-row:1">#</div>
+        <div class="key" style="grid-column:4;grid-row:1">$</div>
+        <div class="key" style="grid-column:5;grid-row:1">%</div>
+        <div class="key" style="grid-column:9;grid-row:1">&</div>
+        <div class="key" style="grid-column:10;grid-row:1">'</div>
+        <div class="key" style="grid-column:11;grid-row:1">-/=</div>
+        <div class="key" style="grid-column:12;grid-row:1">^/~</div>
+        <div class="key" style="grid-column:13;grid-row:1">BSPC</div>
+        <div class="key" style="grid-column:1;grid-row:2">RSHFT</div>
+        <div class="key" style="grid-column:2;grid-row:2">`</div>
+        <div class="key" style="grid-column:3;grid-row:2">*</div>
+        <div class="key" style="grid-column:4;grid-row:2">=</div>
+        <div class="key" style="grid-column:5;grid-row:2">-</div>
+        <div class="key" style="grid-column:8;grid-row:2">@</div>
+        <div class="key" style="grid-column:9;grid-row:2">&lt;&gt;</div>
+        <div class="key" style="grid-column:10;grid-row:2">()</div>
+        <div class="key" style="grid-column:11;grid-row:2">{}</div>
+        <div class="key" style="grid-column:12;grid-row:2">[]</div>
+        <div class="key trans" style="grid-column:13;grid-row:2">trans</div>
+        <div class="key trans" style="grid-column:1;grid-row:3">trans</div>
+        <div class="key" style="grid-column:2;grid-row:3">!</div>
+        <div class="key" style="grid-column:3;grid-row:3">?</div>
+        <div class="key" style="grid-column:4;grid-row:3">+</div>
+        <div class="key" style="grid-column:5;grid-row:3">/</div>
+        <div class="key" style="grid-column:6;grid-row:3">CMD
+SHIFT
+CTRL 4</div>
+        <div class="key trans" style="grid-column:8;grid-row:3">trans</div>
+        <div class="key" style="grid-column:9;grid-row:3">\</div>
+        <div class="key" style="grid-column:10;grid-row:3">|</div>
+        <div class="key" style="grid-column:11;grid-row:3">,</div>
+        <div class="key" style="grid-column:12;grid-row:3">.</div>
+        <div class="key" style="grid-column:13;grid-row:3">/?</div>
+        <div class="key trans" style="grid-column:1;grid-row:4">trans</div>
+        <div class="key trans" style="grid-column:2;grid-row:4">trans</div>
+        <div class="key trans" style="grid-column:3;grid-row:4">trans</div>
+        <div class="key trans" style="grid-column:4;grid-row:4">trans</div>
+        <div class="key trans" style="grid-column:5;grid-row:4">trans</div>
+        <div class="key trans" style="grid-column:6;grid-row:4">trans</div>
+        <div class="key" style="grid-column:8;grid-row:4">;/+</div>
+        <div class="key" style="grid-column:9;grid-row:4">:/*</div>
+        <div class="key" style="grid-column:13;grid-row:4">_</div>
+      </div>
+    </section>
+
+    <section class="layer">
+      <h2>Layer 2</h2>
+      <div class="board">
+        <div class="key" style="grid-column:1;grid-row:1">1</div>
+        <div class="key" style="grid-column:2;grid-row:1">2</div>
+        <div class="key" style="grid-column:3;grid-row:1">3</div>
+        <div class="key" style="grid-column:4;grid-row:1">4</div>
+        <div class="key" style="grid-column:5;grid-row:1">5</div>
+        <div class="key" style="grid-column:9;grid-row:1">CMD +</div>
+        <div class="key" style="grid-column:10;grid-row:1">CMD -</div>
+        <div class="key trans" style="grid-column:11;grid-row:1">trans</div>
+        <div class="key trans" style="grid-column:12;grid-row:1">trans</div>
+        <div class="key trans" style="grid-column:13;grid-row:1">trans</div>
+        <div class="key" style="grid-column:1;grid-row:2">6</div>
+        <div class="key" style="grid-column:2;grid-row:2">7</div>
+        <div class="key" style="grid-column:3;grid-row:2">8</div>
+        <div class="key" style="grid-column:4;grid-row:2">9</div>
+        <div class="key" style="grid-column:5;grid-row:2">0</div>
+        <div class="key trans" style="grid-column:8;grid-row:2">trans</div>
+        <div class="key" style="grid-column:9;grid-row:2">LEFT</div>
+        <div class="key" style="grid-column:10;grid-row:2">DOWN</div>
+        <div class="key" style="grid-column:11;grid-row:2">UP</div>
+        <div class="key" style="grid-column:12;grid-row:2">RIGHT</div>
+        <div class="key" style="grid-column:13;grid-row:2">RIGHT</div>
+        <div class="key" style="grid-column:1;grid-row:3">F1</div>
+        <div class="key" style="grid-column:2;grid-row:3">F2</div>
+        <div class="key" style="grid-column:3;grid-row:3">F3</div>
+        <div class="key" style="grid-column:4;grid-row:3">F7</div>
+        <div class="key" style="grid-column:5;grid-row:3">F8</div>
+        <div class="key" style="grid-column:6;grid-row:3">F9</div>
+        <div class="key" style="grid-column:8;grid-row:3">F10</div>
+        <div class="key" style="grid-column:9;grid-row:3">F11</div>
+        <div class="key" style="grid-column:10;grid-row:3">F12</div>
+        <div class="key trans" style="grid-column:11;grid-row:3">trans</div>
+        <div class="key trans" style="grid-column:12;grid-row:3">trans</div>
+        <div class="key trans" style="grid-column:13;grid-row:3">trans</div>
+        <div class="key trans" style="grid-column:1;grid-row:4">trans</div>
+        <div class="key trans" style="grid-column:2;grid-row:4">trans</div>
+        <div class="key trans" style="grid-column:3;grid-row:4">trans</div>
+        <div class="key held" style="grid-column:4;grid-row:4">MO 3</div>
+        <div class="key trans" style="grid-column:5;grid-row:4">trans</div>
+        <div class="key trans" style="grid-column:6;grid-row:4">trans</div>
+        <div class="key trans" style="grid-column:8;grid-row:4">trans</div>
+        <div class="key" style="grid-column:9;grid-row:4">apple_fn</div>
+        <div class="key trans" style="grid-column:13;grid-row:4">trans</div>
+      </div>
+    </section>
+
+    <section class="layer">
+      <h2>Layer 3</h2>
+      <div class="board">
+        <div class="key" style="grid-column:1;grid-row:1">BOOT</div>
+        <div class="key trans" style="grid-column:2;grid-row:1">trans</div>
+        <div class="key trans" style="grid-column:3;grid-row:1">trans</div>
+        <div class="key trans" style="grid-column:4;grid-row:1">trans</div>
+        <div class="key trans" style="grid-column:5;grid-row:1">trans</div>
+        <div class="key" style="grid-column:8;grid-row:1">BT 0</div>
+        <div class="key" style="grid-column:9;grid-row:1">BT 1</div>
+        <div class="key" style="grid-column:10;grid-row:1">BT 2</div>
+        <div class="key" style="grid-column:11;grid-row:1">BT CLR</div>
+        <div class="key" style="grid-column:12;grid-row:1">BT CLR ALL</div>
+        <div class="key unlock" style="grid-column:1;grid-row:2">STUDIO
+UNLOCK
+(A pos)</div>
+        <div class="key trans" style="grid-column:2;grid-row:2">trans</div>
+        <div class="key trans" style="grid-column:3;grid-row:2">trans</div>
+        <div class="key trans" style="grid-column:4;grid-row:2">trans</div>
+        <div class="key trans" style="grid-column:5;grid-row:2">trans</div>
+        <div class="key trans" style="grid-column:8;grid-row:2">trans</div>
+        <div class="key trans" style="grid-column:9;grid-row:2">trans</div>
+        <div class="key trans" style="grid-column:10;grid-row:2">trans</div>
+        <div class="key trans" style="grid-column:11;grid-row:2">trans</div>
+        <div class="key trans" style="grid-column:12;grid-row:2">trans</div>
+        <div class="key trans" style="grid-column:13;grid-row:2">trans</div>
+      </div>
+      <div class="note">
+        Studio Unlock is on Layer 3 at the physical A position. Layer 3 is reached by holding Layer 2, then holding the Layer 2 key at the Layer 1 physical position where Layer 2 defines MO 3.
+      </div>
+    </section>
+  </div>
+</body>
+</html>
